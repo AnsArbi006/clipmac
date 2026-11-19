@@ -33,7 +33,9 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 | CM-009 | P2 | Betrieb, Wiederaufnahme und Diagnose | M | CM-000 | Offen |
 | CM-010 | P2 | Speicherverwaltung und Sicherung | M | CM-003, CM-009 | Offen |
 
-**Nächster Auftrag: CM-001. Die Basisauslieferung CM-000 ist geprüft und auf main veröffentlicht.** CM-003 kann danach vor CM-002 vorgezogen werden, falls keine echte Analytics-Abnahme möglich ist; Mock-Implementierung von CM-001 bleibt dennoch abschließbar. Konto-Abnahme als „Nicht verifiziert“ markieren.
+**Neue Priorität des Betreibers vom 20.11.2026: CM-012 (siehe unten), nach Korrektur des offenen PR #1. CM-001 bleibt im Backlog.**
+
+**Bisheriger nächster Auftrag: CM-001. Die Basisauslieferung CM-000 ist geprüft und auf main veröffentlicht.** CM-003 kann danach vor CM-002 vorgezogen werden, falls keine echte Analytics-Abnahme möglich ist; Mock-Implementierung von CM-001 bleibt dennoch abschließbar. Konto-Abnahme als „Nicht verifiziert“ markieren.
 
 ## CM-000 – Öffentliche Übergabebasis
 
@@ -170,3 +172,55 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 - **Bessere Titel:** Belegte Transkriptstellen könnten die derzeit vorsichtige Titelvorlage verbessern. Erst Entwürfe vergleichen; keine erfundenen Zitate, Namen oder Clickbait-Versprechen.
 - **Mehr Engagement-Messung:** TikTok-Daten erst über eine tatsächlich verfügbare, legitim angebundene Quelle ergänzen. Keine Interaktionen automatisiert erzeugen.
 - **Professionalisierung:** Plattformübergreifende Installation, Modell-/Dependency-Hashes, UI-Barrierefreiheit und echte End-to-End-Renderbenchmarks. Remote-Dashboard braucht ein eigenes Authentifizierungs-/Betriebskonzept und ist nicht Teil dieses Auftrags.
+
+
+## CM-012 – Live-Highlights, Viral Score und sinnvolle Langvideo-Schnitte
+
+**Status:** Offen. **Priorität:** P1, neuer ausdrücklicher Nutzerauftrag vom 20.11.2026. **Aufwand:** L; in die unten definierten Teil-PRs aufteilen. Erst den offenen Schnittfehler in PR #1 korrigieren. CM-004/005 liefern verwandte Anforderungen und werden durch diese Umsetzung ergänzt, nicht doppelt gebaut. CM-003-Fassungszuordnung für neue Ergebnisse mit berücksichtigen.
+
+### Auftrag an den zweiten Account
+
+Implementiere eine neue integrierte MacClip-Funktion, die Twitch-Livestreams während ihrer Laufzeit überwacht, Chat-Spitzen erkennt, den davor liegenden Kontext aufbewahrt und daraus sinnvoll geschnittene Hochformat-Highlights mit Wortuntertiteln erstellt. Ergänze dieselbe Highlight-Auswahl für lange lokale Videos und Twitch-VODs. Liefere funktionierende Codeänderungen, Tests und Dashboard-Bedienung als Pull Requests; eine Recherche oder ein Konzept allein erfüllt diesen Auftrag nicht. Lokale KI, keine kostenpflichtige Cloud-Inferenz.
+
+### Konkrete Referenzrepos
+
+- Hauptreferenz: https://github.com/st1fo/stream-clipper/tree/70ec4edc1f27be062ad1a4822aa87b84f8d5f85e . README beschreibt Live-Ringpuffer und Chat-Erkennung sowie einen VOD-Modus. Relevante Bereiche sind `stream_clipper/`, `config/` und `tests/`. Als Architekturreferenz lesen; weder Funktionsfähigkeit auf unserem Mac noch Qualität der Scores wurde hier getestet.
+- Kleine ergänzende Referenz: https://github.com/Higuy3000/twitch-clipbot/tree/3431055027862565bfb903185088d36047cdd00f . Einstiegspunkte: `clipbot/chat.py`, `detector.py`, `recorder.py`, `clipper.py`, `retention.py`. Beschreibt ebenfalls Aufnahme und Chat-getriggerte Clips.
+- Bei beiden Repositories meldete GitHub am Recherchezeitpunkt keine erkannte Lizenz. Vor Codeübernahme Lizenz und konkrete Revision prüfen und Herkunft dokumentieren. Ohne passende Erlaubnis keine Dateien/Codefragmente übernehmen; Funktion eigenständig auf Basis geeigneter lizenzierter Bibliotheken wie Streamlink/FFmpeg und der Twitch-Schnittstellen implementieren. Keine fremden Installationsskripte ungeprüft ausführen.
+
+### Teil-PR A: Live-Aufzeichnung und Spike-Erkennung
+
+- Dashboard: eigener Bereich „Live-Highlights“, vier bestehende Streamer, pro Kanal Start/Stopp, offline/verbunden/wärmt auf/zeichnet auf/Fehler, Pufferdauer und belegter Speicher. Standard deaktiviert, kein Autostart nach Installation. Offline-Kanäle alle 60 Sekunden prüfen. Der Mac muss wach und der Prozess aktiv sein; kein dauerhaft offener Browserplayer nötig.
+- Streamlink/FFmpeg in einen lokalen 5-Minuten-Ringpuffer mit 5-Sekunden-Segmenten aufnehmen. Nur ausgewählte Kanäle; zuerst maximal zwei gleichzeitige Recorder, weitere sichtbar wartend. Alte unreservierte Segmente entfernen; Kandidaten reservieren benötigte Segmente bis zum abgeschlossenen Export. Insgesamt maximal 5 GB Live-Puffer; bei weniger als 5 GB freiem Speicher Aufnahme geordnet pausieren und warnen, niemals aktive Segmente löschen.
+- Twitch-Chat über aktuell unterstützte Schnittstelle lesen. Authentifizierung, notwendige Rechte und Wiederverbindung dokumentieren; keine nicht verifizierte anonyme Zugangsmöglichkeit voraussetzen. Keine Chatnachrichten senden. Nachrichten zählen, unterschiedliche Teilnehmer pro Zeitfenster erkennen; Nutzerkennungen nur flüchtig, standardmäßig keine Rohtexte dauerhaft speichern.
+- Eigenständiger v1-Detektor: 10-Sekunden-Fenster, vorherige 180 Sekunden als Baseline ohne aktuelles Fenster. Trigger erst nach Aufwärmphase: mindestens 15 Nachrichten und fünf unterschiedliche Teilnehmer, Nachrichtenrate mindestens dreimal Baseline (Nenner mindestens 1 Nachricht/Fenster), zusätzlich robuste Abweichung mindestens drei MAD mit Nenner mindestens 1. Schwellen konfigurierbar; diese Startwerte sind Heuristiken, kein trainiertes Modell. Wiederholungen desselben Nutzers begrenzen. Disconnects zählen als Datenlücke, nicht als ruhiger Chat.
+- Zeitbasis: Empfangszeiten und Medien-PTS zuordnen; Chat-Reaktionsversatz zunächst konfigurierbare 6 Sekunden. Kandidat zunächst 30 Sekunden vor bis 30 Sekunden nach korrigiertem Trigger. Nahe Ereignisse innerhalb 60 Sekunden zusammenführen, maximal 120 Sekunden. Bei fehlendem Vorlauf sichtbar als unvollständig markieren. Nach Reconnect neu aufwärmen. Keine Überschneidung verschiedener Streamsitzungen.
+- Kategorie während der Aufnahme prüfen und mit Segmentzeiten speichern. Bestehender GTA-6-Filter bleibt verbindlich; unbekannte oder wechselnde Kategorie im Kandidaten führt zu Prüfbedarf, nicht stiller Freigabe.
+
+### Teil-PR B: Lange Videos und sinnvolle Schnittgrenzen
+
+- Import einer lokalen Datei oder einer expliziten Twitch-VOD-URL, abbrechbarer Analyseauftrag mit Fortschritt. Lange Quellen separat verarbeiten: die bisherige 190-Sekunden-Grenze von `cut_silence()` nicht pauschal entfernen. Stattdessen abschnittsweise mit 30 Sekunden Überlappung transkribieren, absolute Zeitmarken erhalten und deduplizieren; zunächst 10-Minuten-Analyseblöcke, ein CPU-Analyseworker.
+- Aus Chat-Ereignissen, Transkript und optional lokaler Audioenergie Kandidaten vorschlagen. Ohne Chat Datenbasis sichtbar kennzeichnen. Reine Lautstärke oder Emotes nicht automatisch als Humor klassifizieren.
+- Lokales Ollama prüft verständlichen Einstieg, erforderlichen Kontext, Reaktion/Höhepunkt und Abschluss. Jede Aussage braucht Zeitmarken und Transkriptbelege. Fehlende Evidenz ergibt „nicht beurteilbar“; keine erfundenen Handlungen. Ungültiges JSON/Timeout begrenzt behandeln.
+- Ziel 20–60 Sekunden; bis 120 Sekunden, wenn der Sinn es erfordert. An tatsächlichen Satz-/Pausengrenzen schneiden, Kontext vor der Pointe erhalten und Reaktion auslaufen lassen. Keine Satzhälften nur wegen eines Längenziels abschneiden. Zunächst zusammenhängende Ausschnitte, keine Umstellung der Chronologie und keine erfundenen Hooks. Innenpausen vorsichtig kürzen; relevante stille Bildmomente zur Prüfung markieren.
+- Vorhandene Facecam-/Fullcam-Pipeline und Wortuntertitel wiederverwenden. Original, Zeitzuordnung, Schnittfassung und Begründung speichern. Bereits veröffentlichte Dateien unverändert lassen.
+
+### Teil-PR C: Viral Score und Vorschau
+
+- Anzeige „Viral Score (experimentell)“ von 0–100; ausdrücklich keine Erfolgswahrscheinlichkeit und kein Nachweis von Viralität. Einzelwerte und Gründe anzeigen: Chat-Spitze, Vielfalt reagierender Teilnehmer, Einstieg, Kontextverständlichkeit, Höhepunkt/Abschluss.
+- Versionierte v1-Gewichte: Chat-Stärke 20 %, Teilnehmerbreite 15 %, Einstieg 20 %, Kontext 20 %, Höhepunkt/Abschluss 25 %. Textkriterien lokal als 0/1/2 mit Belegen beurteilen und auf 0–100 skalieren. Chat-Stärke aus Verhältnis zur Baseline: 1×→0, 5×→100, dazwischen linear und begrenzt. Teilnehmerbreite analog gegenüber der eigenen historischen Teilnehmer-Baseline. Keine absoluten Vergleiche großer und kleiner Streamer.
+- Fehlender Chat darf nicht als null eingehen. Bei VOD ohne Chat separate textbasierte Wertung mit normalisierten verfügbaren Gewichten und Kennzeichnung „ohne Chat“; nicht mit vollständigem Live-Score in eine gemeinsame Rangliste mischen. Bei fehlenden Textbelegen keine Gesamtwertung erzwingen. Technische Fehler separat sperren, nicht durch guten Score kompensieren.
+- Kandidatenkarten mit Vorschau, Score-Aufschlüsselung, Quellenzeit, vorgeschlagenem Schnitt und Gut/Mittel/Schlecht sowie Fehlerbericht. Ab 60 Punkten standardmäßig als empfohlen markieren, ohne automatisch zu veröffentlichen. Schwelle lokal konfigurierbar, Modell-/Prompt-/Score-Version speichern.
+- Die bisherige Entscheidung „erst vergleichen“ gilt weiter: neuer Live-/VOD-Pfad erzeugt zunächst Review-Kandidaten. Freigegebene aktuelle Live-Kandidaten dürfen über eine bewusste Dashboard-Aktion in die bestehende Paketqueue; keine neue parallele Uploadfunktion. Ältere VOD-Highlights bleiben lokal, da sie die bestehende Sieben-Stunden-Regel nicht erfüllen. Vor Upload alle bisherigen Kategorie-, Alters-, Sperr- und Duplikatregeln erneut prüfen.
+- Für Live-/VOD-Kandidaten Herkunft und ID sauber modellieren: Stream-ID/VOD-ID plus Zeitintervall und Medienhash; keine erfundenen Twitch-Clip-IDs. Doppelte/überlappende Ausschnitte auch gegenüber bereits bekannten Twitch-Clips abgleichen, soweit VOD-Zuordnung vorhanden; unklare Herkunft kennzeichnen. Datenmodell und Paketadapter additiv migrieren.
+
+### Abnahme und Tests
+
+1. Synthetischer Chat: normale Rate, echter Burst vieler Teilnehmer, Spam eines Nutzers, dauerhaft großer Chat, stille Baseline, Reconnect, verzögerte Nachrichten. Trigger, Warmup und Zusammenführung deterministisch testen.
+2. Synthetische segmentierte Aufnahme: Vor-/Nachlauf, fehlende Segmente, Chatversatz, Kategorie-Wechsel, voller Datenträger, Stop während Aufnahme/Export und Neustart. Keine Endlosqueues oder unkontrolliert wachsende Dateien.
+3. Langes synthetisches Video mit Pointe an einer Blockgrenze: Kontext und Abschluss im selben Short, absolute Wortzeiten korrekt, keine doppelten Highlights. A/V-Längendifferenz aus PR #1 als Regression erhalten.
+4. Score: fehlende Signale, ungültige Modellantwort, Prompt-Injection aus Chat/Transkript, Grenzwerte, nachvollziehbare Gewichtung und Versionsänderungen. Keine fehlenden Kennzahlen als Erfolg ausgeben.
+5. Vollständiger trockener Ablauf Aufnahme→Trigger→Schnitt→Untertitel→Dashboard ohne Plattform-Upload. Entwicklungsmodus muss auch neue Recorder-/Netzwerk-Startendpunkte blockieren; Tests mit lokalen Fixtures und Mocks.
+6. Ressourcen messen: CPU/RAM, Pufferverbrauch, Renderdauer und Verzögerung pro Kandidat für einen und zwei simulierte Kanäle. Vollständige bestehende Suite und CI grün. Reale Live-Abnahme separat durch Betreiber dokumentieren; synthetische Tests allein bestätigen keine robuste Livestream-Integration.
+
+**Ergebnis:** Drei fokussierte PRs A/B/C mit Dokumentation, Tests, sichtbarer Vorschau und Grenzen. Keine eigene Modelltrainingspipeline in dieser Aufgabe. Höhere Zuschauerbindung bleibt eine anschließend zu messende Hypothese; CM-001/002 bleiben dafür relevant.
