@@ -21,7 +21,7 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 
 | ID | Priorität | Aufgabe | Aufwand | Abhängigkeiten | Status |
 | --- | --- | --- | --- | --- | --- |
-| CM-000 | P0 | Öffentliche Übergabebasis und Isolation | M | – | Zur Prüfung |
+| CM-000 | P0 | Öffentliche Übergabebasis und Isolation | M | – | Erledigt |
 | CM-001 | P1 | Optionale YouTube Analytics | M | CM-000 | Offen |
 | CM-002 | P1 | Vergleichbares Engagement-Dashboard | M | CM-001 | Offen |
 | CM-003 | P1 | Veröffentlichte Fassung eindeutig belegen | M | CM-000 | Offen |
@@ -33,7 +33,7 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 | CM-009 | P2 | Betrieb, Wiederaufnahme und Diagnose | M | CM-000 | Offen |
 | CM-010 | P2 | Speicherverwaltung und Sicherung | M | CM-003, CM-009 | Offen |
 
-**Nächster Auftrag nach Abnahme der Basis: CM-001.** CM-003 kann danach vor CM-002 vorgezogen werden, falls keine echte Analytics-Abnahme möglich ist; Mock-Implementierung von CM-001 bleibt dennoch abschließbar. Konto-Abnahme als „Nicht verifiziert“ markieren.
+**Nächster Auftrag: CM-001. Die Basisauslieferung CM-000 ist geprüft und auf main veröffentlicht.** CM-003 kann danach vor CM-002 vorgezogen werden, falls keine echte Analytics-Abnahme möglich ist; Mock-Implementierung von CM-001 bleibt dennoch abschließbar. Konto-Abnahme als „Nicht verifiziert“ markieren.
 
 ## CM-000 – Öffentliche Übergabebasis
 
@@ -43,7 +43,7 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 
 **Umfang dieser Lieferung:** Öffentliches Repo, MIT für eigenen Code, Drittanbieterhinweise, fixiertes Twitch-Submodul, README/Installation, Aufgabenliste, AGENTS.md, Startauftrag und PR-Vorlage. `clipmac.environment` trennt Datenverzeichnis und Entwicklungsmodus; `clipmac.dev` erzeugt synthetische Beispiele. Upload-/Auth-Sperren sitzen zusätzlich unterhalb der UI. CI und Veröffentlichungsscan hinzufügen. Importkonflikt mit Upstream-`tiktok_uploader.py` beheben.
 
-**Abnahme:** Frische isolierte Testinstallation, vollständige Mock-Suite, API-Test des Entwicklungsmodus, synthetische Vorschau, JS-Syntaxcheck und Veröffentlichungsscan erfolgreich. Keine produktiven Dateien übernommen. Remote-Repo und CI prüfen. Tatsächliche Belege unter `docs/VALIDIERUNG.md`; Status nach diesen Prüfungen aktualisieren.
+**Abnahme:** Frische isolierte Testinstallation, vollständige Mock-Suite, API-Test des Entwicklungsmodus, synthetische Vorschau, JS-Syntaxcheck und Veröffentlichungsscan erfolgreich. Keine produktiven Dateien übernommen. Remote-Repo und CI prüfen. Abgenommen: 111 lokale Tests, 111 Tests im GitHub-macOS-Lauf, synthetische Browser-Vorschau und Veröffentlichungsscan. Basisauslieferung direkt auf main; Folgeaufgaben ausschließlich per PR. Belege unter `docs/VALIDIERUNG.md`.
 
 ## CM-001 – Optionale YouTube Analytics
 

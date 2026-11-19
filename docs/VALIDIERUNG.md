@@ -5,18 +5,19 @@ Stand: 19.11.2026. Belege betreffen die bereinigte Entwicklungskopie, nicht den 
 ## Lokal geprüft
 
 - Frische Python-3.10.5-Umgebung ohne Übernahme der produktiven site-packages angelegt; Entwicklungsdependencies aus öffentlichen Paketquellen und festgelegtem TikTok-Commit installiert. `requirements-dev.lock.txt` hält die verwendeten Versionen fest.
-- Vollständige Unit-/Mock-/Entwicklungs-API-Suite: **110 Tests bestanden**, keine übersprungenen Tests. Enthält echte lokale HTTP-Aufrufe an eine synthetische Instanz und separate Prozesse für Upload-/Auth-Sperren.
+- Vollständige Unit-/Mock-/Entwicklungs-API-Suite: **111 Tests bestanden**, keine übersprungenen Tests. Enthält echte lokale HTTP-Aufrufe an eine synthetische Instanz und separate Prozesse für Upload-/Auth-Sperren.
 - JavaScript-Dateien mit `node --check` geprüft.
 - Synthetischen viersekündigen Clip mit FFmpeg (Farbmuster/Testton) erzeugt. In Chrome Vorschau geöffnet, laufende Wiedergabe und Entwicklungsbanner geprüft. Kein fremdes Video benutzt, kein Upload.
 - Versehentlich übernommene Anmeldungen werden bei Eintritt in den Entwicklungsmodus abgewiesen; produktiver Standardordner und nichtleere unmarkierte Datenverzeichnisse werden nicht geöffnet.
 - Importkonflikt behoben: das Twitch-Submodul enthält einen gleichnamigen TikTok-Helper. Installierte Pakete haben jetzt Vorrang; komplette Suite prüft beide Integrationen gemeinsam.
 - Vor dem ersten Commit werden explizite Dateiliste und Veröffentlichungsscan geprüft. Keine Betriebshistorie, Zugangsdaten, Browserprofile oder Clip-Mediendateien im Root-Commit. Git-Submodul verweist auf den unveränderten öffentlichen Upstream-Commit.
 
-- Ein frischer öffentlicher GitHub-Klon einschließlich Submodul bestand ebenfalls die damals vollständige Suite (109 Tests); der zusätzliche Launcher-Isolationstest wurde anschließend lokal ergänzt und bestanden.
+- Ein frischer öffentlicher GitHub-Klon einschließlich Submodul bestand ebenfalls die damals vollständige Suite (109 Tests). Zwei anschließende Regressionstests sichern den Entwicklungs-Launcher und DNS-unabhängigen Serverstart; die vollständige 111er-Suite bestand lokal und in CI.
+- Die CI-Aufnahme deckte einen nicht mehr verfügbaren macOS-14-Runner und den blockierenden Reverse-DNS-Aufruf beim lokalen HTTP-Serverstart auf. Workflow verwendet macOS 15; der Loopback-Server benötigt keine Reverse-DNS-Auflösung.
 
 ## Getrennte Nachweise
 
-GitHub Actions prüft einen frischen Checkout auf macOS 15/Python 3.11 ohne Produktionssecrets. Das Ergebnis ist unter dem Tests-Badge in der README sichtbar; maßgeblich ist der Lauf des jeweiligen Commit-SHA, nicht ein früher grüner Lauf.
+GitHub Actions hat einen frischen Checkout auf macOS 15/Python 3.11 ohne Produktionssecrets erfolgreich geprüft: **111 Tests**, JavaScript-Syntax, synthetische Fixture und Veröffentlichungsscan. [Erfolgreicher Code-Abnahmelauf](https://github.com/AnsArbi006/clipmac/actions/runs/44632600356), Code-Commit `e50513f9adc29ff4896d64f04c24c89a7b413ccc`. Das Ergebnis ist unter dem Tests-Badge in der README sichtbar; maßgeblich ist der Lauf des jeweiligen Commit-SHA, nicht ein früher grüner Lauf.
 
 ## Nicht verifiziert / bewusst nicht ausgeführt
 
