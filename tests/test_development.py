@@ -10,7 +10,7 @@ import tempfile
 import time
 import unittest
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request, ProxyHandler, build_opener
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -41,6 +41,21 @@ class DevelopmentTests(unittest.TestCase):
             (Path(temp)/'credentials').mkdir()
             p = self.execute('import clipmac.state', temp)
             self.assertNotEqual(p.returncode, 0)
+
+    def test_live_launcher_cannot_open_an_existing_production_dashboard_in_dev_mode(self):
+        code = '''
+from unittest.mock import patch
+from clipmac import launch
+with patch.object(launch, 'reachable') as reachable, patch.object(launch.webbrowser, 'open') as browser:
+    try: launch.main()
+    except RuntimeError as e: assert 'clipmac.dev' in str(e)
+    else: raise AssertionError('live launcher accepted development mode')
+    reachable.assert_not_called()
+    browser.assert_not_called()
+'''
+        with tempfile.TemporaryDirectory() as temp:
+            p = self.execute(code, temp)
+            self.assertEqual(p.returncode, 0, p.stderr)
 
     def test_low_level_external_actions_are_blocked_before_using_dependencies(self):
         code = '''
@@ -82,30 +97,36 @@ assert with_error
                                  cwd=ROOT, env={**os.environ, 'CLIPMAC_DEV':'1'},
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             try:
+                # Loopback tests must not be sent through a runner's system proxy.
+                open_local = build_opener(ProxyHandler({})).open
                 base = f'http://127.0.0.1:{port}'
-                deadline = time.monotonic()+15
+                deadline = time.monotonic()+20
                 while True:
                     try:
-                        with urlopen(base, timeout=1) as response: html = response.read().decode()
+                        with open_local(base, timeout=2) as response: html = response.read().decode()
                         break
                     except (URLError, TimeoutError):
                         if p.poll() is not None or time.monotonic()>deadline:
-                            self.fail('development server failed to start')
+                            if p.poll() is None:
+                                p.terminate()
+                            out, err = p.communicate(timeout=5)
+                            self.fail(f'development server failed: {p.returncode}\n{out}\n{err}')
                         time.sleep(.05)
                 self.assertIn('Alle Daten sind synthetisch', html)
                 token = re.search(r"const token='([^']+)'", html).group(1)
-                with urlopen(base+'/api/state') as response: state = json.load(response)
+                with open_local(base+'/api/state', timeout=3) as response: state = json.load(response)
                 self.assertTrue(state['development'])
                 for endpoint in ('start','twitch','youtube-client','youtube-connect','tiktok/start','tiktok/connect','tiktok/check'):
                     request = Request(base+'/api/'+endpoint, data=b'{}', headers={'Content-Type':'application/json','X-ClipMac-Token':token})
-                    with self.assertRaises(HTTPError) as ctx: urlopen(request, timeout=2)
+                    with self.assertRaises(HTTPError) as ctx: open_local(request, timeout=3)
                     self.assertEqual(ctx.exception.code,400)
                     self.assertIn('Entwicklungsmodus',ctx.exception.read().decode())
-                with urlopen(base+'/api/learning/export') as response: data = json.load(response)
+                with open_local(base+'/api/learning/export', timeout=3) as response: data = json.load(response)
                 self.assertFalse(data['model_trained'])
                 self.assertFalse((Path(temp)/'credentials').exists())
             finally:
-                p.send_signal(signal.SIGINT)
+                if p.poll() is None:
+                    p.send_signal(signal.SIGINT)
                 try: p.communicate(timeout=5)
                 except subprocess.TimeoutExpired:
                     p.kill(); p.communicate(timeout=5)

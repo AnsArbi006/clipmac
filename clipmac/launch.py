@@ -6,6 +6,7 @@ import webbrowser
 from urllib.request import urlopen
 
 from .state import ROOT, RUNTIME
+from .environment import DEVELOPMENT
 
 
 def reachable(url):
@@ -17,6 +18,8 @@ def reachable(url):
 
 
 def main():
+    if DEVELOPMENT:
+        raise RuntimeError("Entwicklungsmodus: mit python -m clipmac.dev starten.")
     if reachable("http://127.0.0.1:8768/api/state"):
         webbrowser.open("http://127.0.0.1:8768")
         return
