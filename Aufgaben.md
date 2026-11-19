@@ -32,6 +32,7 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 | CM-008 | P2 | Technische Qualitätsprüfung | M | CM-003 | Offen |
 | CM-009 | P2 | Betrieb, Wiederaufnahme und Diagnose | M | CM-000 | Offen |
 | CM-010 | P2 | Speicherverwaltung und Sicherung | M | CM-003, CM-009 | Offen |
+| CM-011 | P1 | Stille am Clipanfang und -ende kürzen | S | CM-000 | Zur Prüfung |
 
 **Nächster Auftrag: CM-001. Die Basisauslieferung CM-000 ist geprüft und auf main veröffentlicht.** CM-003 kann danach vor CM-002 vorgezogen werden, falls keine echte Analytics-Abnahme möglich ist; Mock-Implementierung von CM-001 bleibt dennoch abschließbar. Konto-Abnahme als „Nicht verifiziert“ markieren.
 
@@ -162,6 +163,12 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 **Komponenten:** Datenablage, neuer Wartungsdienst, Dashboard, Installationsdokumentation.
 
 **Tests/Abnahme:** Symlink-Ausbruch, Pfadtraversal, paralleler Render, offener Fehlerbericht, wenig Speicher, unterbrochene Sicherung, beschädigtes Backup und Restore. Nach Restore bleiben bekannte/veröffentlichte/gelöschte Clips gesperrt. Trockene Vorschau stimmt mit tatsächlichem Umfang überein.
+
+## CM-011 – Stille am Clipanfang und -ende kürzen
+
+Ziel: Clips mit einem stillen Einstieg beginnen näher am ersten hörbaren Moment und behalten einen kurzen Puffer am Tonanfang. Stille Ränder erzeugen keine zusätzlichen Schnittstücke.
+
+Abnahme: Ein synthetischer Clip mit 0,5 Sekunden Stille am Anfang und 0,75 Sekunden am Ende setzt mit den Standardwerten nach rund 0,15 Sekunden mit Ton ein. Eine gleich lange kurze Pause im Clipinneren bleibt erhalten. Die Prüfung auf fast vollständig stille Clips bleibt aktiv. Entscheidend sind bei diesem Schnitt die Audiosignale. Eine reale Vorschau muss auch relevante leise Bildmomente berücksichtigen.
 
 ## Weitere Überlegungen – vorerst nicht implementieren
 
