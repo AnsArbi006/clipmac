@@ -1,0 +1,14 @@
+{
+  "streamers": ["papaplatte", "zarbex", "trymacs", "montanablack88"],
+  "lookback_hours": 7,
+  "top_per_streamer": 5,
+  "selection_scope": "per_streamer",
+  "required_game_id": "1867279146",
+  "required_game_name": "Grand Theft Auto VI",
+  "publish_batch_size": 5,
+  "publish_batch_interval_minutes": 60,
+  "publish_enabled": false,
+  "channel_id": "",
+  "channel_title": "",
+  "facecam_share": 0.3333333333333333
+}

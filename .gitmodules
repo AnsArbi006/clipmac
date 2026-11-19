@@ -1,0 +1,3 @@
+[submodule "upstream-twitch-clipper"]
+	path = upstream-twitch-clipper
+	url = https://github.com/coltonalmeida/twitch-clipper.git

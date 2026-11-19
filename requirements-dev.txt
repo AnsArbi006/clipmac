@@ -1,0 +1,2 @@
+# Minimal environment for tests and the synthetic dashboard.
+-r requirements-dev.lock.txt
