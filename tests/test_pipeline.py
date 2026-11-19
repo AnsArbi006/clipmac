@@ -76,10 +76,26 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(spans, [(0, 2.15), (4.85, 8)])
         self.assertAlmostEqual(sum(b-a for a,b in spans), 5.3)
 
+    def test_boundary_silence_leaves_one_continuous_take(self):
+        spans = keep_intervals([(0, 0.5), (2, 2.5), (3.25, None)], 4, min_interior_seconds=0.8)
+        self.assertEqual(spans, [(0.35, 3.4)])
+
+    def test_interior_silence_respects_the_configured_threshold(self):
+        silences = [(1.5, 2), (3, 4)]
+        self.assertEqual(keep_intervals(silences, 5, min_interior_seconds=0.8),
+                         [(0, 3.15), (3.85, 5)])
+        self.assertEqual(keep_intervals(silences, 5, min_interior_seconds=1.2), [(0, 5)])
+
+    def test_silence_parser_accepts_negative_and_scientific_timestamps(self):
+        metadata = ('lavfi.silence_start=-1.25e-05\nlavfi.silence_end=5.25e-01\n'
+                    'lavfi.silence_start=2\nlavfi.silence_end=3.001\n')
+        self.assertEqual(silence_intervals(metadata, 3), [(0.0, 0.525), (2.0, 3)])
+
     def test_trailing_and_all_silence(self):
-        self.assertEqual(silence_intervals("silence_start: 2.0\nsilence_end: 3.0\nsilence_start: 7.0", 10), [(2,3),(7,10)])
+        metadata = 'lavfi.silence_start=2.0\nlavfi.silence_end=3.0\nlavfi.silence_start=7.0\n'
+        self.assertEqual(silence_intervals(metadata, 10), [(2, 3), (7, None)])
         with self.assertRaises(RuntimeError):
-            keep_intervals([(0, 10)], 10)
+            keep_intervals([(0, None)], 10)
 
     def test_caption_timing_and_escape(self):
         path = Path(self.temp.name) / "captions.ass"

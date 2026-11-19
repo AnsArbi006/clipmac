@@ -41,7 +41,7 @@ Dies erzeugt kurze Farbmuster mit Testton. Keine Streamer-Videos und kein Modell
 | Bereich | Umsetzung und Grenze |
 | --- | --- |
 | Auswahl | Twitch Helix, Ranking nach Aufrufen, Zeitfenster und optionale Kategorieprüfung; Clip-ID- und VOD-Überlappungs-Deduplizierung. Keine ML-Auswahl. |
-| Schnitt | FFmpeg-Stilleerkennung, Bild/Ton gemeinsam kürzen, kurze Audio-Fades. Musikpausen sind nicht automatisch Sprechpausen. |
+| Schnitt | Bild und Ton gemeinsam kürzen. Standardmäßig erkennt FFmpeg stille Clipränder ab 0,35 Sekunden und stille Innenpausen ab 0,8 Sekunden. Kurze Puffer und Audio-Fades glätten die Schnitte. |
 | Hochformat | 1080×1920; standardmäßig ⅓ Facecam, ⅔ Inhalt; geometrisch erkannte Fullcam-Wechsel. YuNet erkennt Gesichter, die Layoutentscheidung ist heuristisch. |
 | Untertitel | faster-whisper small, lokale CPU/int8-Inferenz mit Wortzeiten; ASS mit aktivem Wort, kurzen Gruppen und maximal zwei Zeilen. Eigennamen können falsch erkannt werden. |
 | Metadaten | Lokales Ollama/Qwen 2.5 3B formuliert Originaltitel um. Hashtag-Beschreibungen folgen Metadaten; keine erfundenen Teilnehmer. |

@@ -9,6 +9,10 @@ from pathlib import Path
 
 from .state import ROOT, atomic_json
 
+EDGE_SILENCE_MIN_SECONDS = 0.35
+# FFmpeg rounds the timestamps written by silencedetect.
+SILENCE_TIMESTAMP_TOLERANCE = 0.0001
+
 # Upstream also contains a tiktok_uploader.py. Keep installed packages first.
 sys.path.append(str(ROOT / "upstream-twitch-clipper" / "src"))
 
@@ -32,26 +36,34 @@ def probe(path):
     return json.loads(run([binary("ffprobe"), "-v", "error", "-show_streams", "-show_format", "-of", "json", path]).stdout)
 
 
-def silence_intervals(log, duration):
+def silence_intervals(metadata, duration):
+    """Read silence events in clip time. An open interval reaches audio EOF."""
     intervals = []
     start = None
-    for match in re.finditer(r"silence_(start|end):\s*([\d.]+)", log):
-        kind, value = match.group(1), min(duration, float(match.group(2)))
+    pattern = r"^lavfi\.silence_(start|end)=(-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)$"
+    for match in re.finditer(pattern, metadata, re.MULTILINE):
+        kind = match.group(1)
+        value = min(duration, max(0.0, float(match.group(2))))
         if kind == "start":
             start = value
         elif start is not None:
             intervals.append((start, value))
             start = None
     if start is not None:
-        intervals.append((start, duration))
+        intervals.append((start, None))
     return intervals
 
 
-def keep_intervals(silences, duration, padding=0.15):
+def keep_intervals(silences, duration, padding=0.15, *, min_interior_seconds=0.0):
+    """Keep padding beside audible material and remove silence at the outer boundaries."""
     keep, cursor = [], 0.0
     for start, end in silences:
-        cut_start = min(duration, max(cursor, start + padding))
-        cut_end = min(duration, max(cut_start, end - padding))
+        at_start = start <= SILENCE_TIMESTAMP_TOLERANCE
+        at_end = end is None
+        if not (at_start or at_end) and end - start + SILENCE_TIMESTAMP_TOLERANCE < min_interior_seconds:
+            continue
+        cut_start = cursor if at_start else min(duration, max(cursor, start + padding))
+        cut_end = duration if at_end else min(duration, max(cut_start, end - padding))
         if cut_end - cut_start < 0.1:
             continue
         if cut_start - cursor > 0.04:
@@ -71,10 +83,16 @@ def cut_silence(source, output, cfg):
     duration = float(info["format"]["duration"])
     if not 1 <= duration <= 190:
         raise RuntimeError("Erwartet wird ein Clip bis 3 Minuten, kein vollständiger Stream.")
-    analysis = run([binary("ffmpeg"), "-hide_banner", "-nostdin", "-i", source,
-                    "-af", f"silencedetect=noise={cfg['silence_db']}dB:d={cfg['silence_min_seconds']}",
-                    "-vn", "-f", "null", "-"])
-    spans = keep_intervals(silence_intervals(analysis.stderr, duration), duration, cfg["silence_padding_seconds"])
+    interior_min = cfg["silence_min_seconds"]
+    detect_min = min(EDGE_SILENCE_MIN_SECONDS, interior_min)
+    # Only a frame with returning sound carries silence_end metadata. FFmpeg's
+    # diagnostic log prints an end timestamp at audio EOF too.
+    filters = (f"silencedetect=noise={cfg['silence_db']}dB:d={detect_min},"
+               "ametadata=mode=print:file=-")
+    analysis = run([binary("ffmpeg"), "-hide_banner", "-nostdin", "-i", source, "-map", "0:a:0",
+                    "-af", filters, "-vn", "-f", "null", "-"])
+    spans = keep_intervals(silence_intervals(analysis.stdout, duration), duration,
+                           cfg["silence_padding_seconds"], min_interior_seconds=interior_min)
     parts, joins = [], []
     for i, (a, b) in enumerate(spans):
         parts.extend([f"[0:v]trim=start={a:.6f}:end={b:.6f},setpts=PTS-STARTPTS[v{i}]",
@@ -86,7 +104,8 @@ def cut_silence(source, output, cfg):
          "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast",
          "-crf", "18", "-threads", "4", "-pix_fmt", "yuv420p", "-r", "30",
          "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-movflags", "+faststart", output])
-    return {"original_seconds": duration, "kept_seconds": sum(b - a for a, b in spans), "kept_intervals": spans, "audio_join_fade_ms": 8}
+    return {"original_seconds": duration, "kept_seconds": sum(b - a for a, b in spans),
+            "kept_intervals": spans, "audio_join_fade_ms": 8, "silence_cut_version": 2}
 
 
 _whisper = None
