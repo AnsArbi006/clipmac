@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, ProxyHandler, build_opener
 
@@ -16,6 +17,14 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class DevelopmentTests(unittest.TestCase):
+    def test_loopback_server_does_not_depend_on_reverse_dns(self):
+        from clipmac.server import LocalHTTPServer
+        from http.server import BaseHTTPRequestHandler
+        with patch('socket.getfqdn', side_effect=AssertionError('reverse DNS must not be required')):
+            with LocalHTTPServer(('127.0.0.1', 0), BaseHTTPRequestHandler) as server:
+                self.assertEqual(server.server_name, 'localhost')
+                self.assertGreater(server.server_port, 0)
+
     def execute(self, code, directory, dev='1'):
         return subprocess.run([sys.executable, '-c', code], cwd=ROOT,
                               env={**os.environ, 'CLIPMAC_DEV': dev, 'CLIPMAC_DATA_DIR': str(directory)},
@@ -93,7 +102,8 @@ assert with_error
         with tempfile.TemporaryDirectory() as temp, socket.socket() as listener:
             listener.bind(('127.0.0.1', 0)); port = listener.getsockname()[1]
             listener.close()
-            p = subprocess.Popen([sys.executable, '-m', 'clipmac.dev', '--data-dir', temp, '--port', str(port)],
+            diagnostic = "import faulthandler, runpy; faulthandler.dump_traceback_later(10); runpy.run_module('clipmac.dev', run_name='__main__')"
+            p = subprocess.Popen([sys.executable, '-c', diagnostic, '--data-dir', temp, '--port', str(port)],
                                  cwd=ROOT, env={**os.environ, 'CLIPMAC_DEV':'1'},
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             try:

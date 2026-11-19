@@ -5,6 +5,7 @@ import subprocess
 import secrets as random_secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from socketserver import TCPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -13,6 +14,15 @@ from .engine import Engine
 from . import publisher
 from .tiktok_service import TikTokController
 from .environment import DEVELOPMENT, require_live
+
+
+class LocalHTTPServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # This server is loopback-only; reverse DNS is unnecessary and can stall
+        # startup on machines whose hostname resolver is unavailable.
+        TCPServer.server_bind(self)
+        self.server_name = "localhost"
+        self.server_port = self.server_address[1]
 
 
 def serve(port=8768):
@@ -211,7 +221,7 @@ def serve(port=8768):
             except Exception as exc:
                 return self.send({"error": str(exc)[:1000]}, 400)
 
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    httpd = LocalHTTPServer(("127.0.0.1", port), Handler)
     sleep_guard = None
     if not DEVELOPMENT and Path("/usr/bin/caffeinate").is_file():
         sleep_guard = subprocess.Popen(["/usr/bin/caffeinate", "-i", "-w", str(os.getpid())])
