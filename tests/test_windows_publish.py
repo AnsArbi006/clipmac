@@ -71,7 +71,7 @@ def add_clip(queue, key, eligible=True, score=90):
 
 def step(engine):
     enabled = {p for p in engine.cfg.get("platforms_enabled", ("tiktok", "youtube"))
-               if engine.platform_pause[p][0] <= time.time() and engine._account_ok(p)}
+               if engine.platform_pause[p][0] <= time.time() and engine._package_ok(p) and engine._account_ok(p)}
     item = engine.queue.claim(engine.cfg["streamers"], enabled, engine.cfg["score_threshold"])
     if item:
         engine._publish(item)
@@ -101,6 +101,22 @@ class PublishTests(unittest.TestCase):
         self.assertIsNone(step(engine))
         self.assertEqual(self.status(engine, "c" * 32), {"tiktok": "public", "youtube": "public"})
         self.assertEqual(len(up["tiktok"].calls) + len(up["youtube"].calls), 2)
+
+    def test_packages_of_three_then_one_hour_pause(self):
+        engine, up = make_engine(self.root, {})
+        for i in range(5):
+            add_clip(engine.queue, str(i) * 32)
+        for _ in range(6):                                    # 3 clips x TikTok+YouTube
+            self.assertIsNotNone(step(engine))
+        self.assertIsNone(step(engine))                       # 4th waits: package full
+        self.assertGreater(engine.platform_pause["youtube"][0], time.time() + 3500)
+        q = engine.queue
+        self.assertEqual(q.package_wait("youtube", 3, 3600, now=time.time() + 3601), 0)
+        with q.db() as db:                                    # simulate the hour passing
+            db.execute("UPDATE posts SET sent_at = sent_at - 3700")
+        engine.platform_pause = {p: (0, "") for p in ("tiktok", "youtube")}
+        self.assertIsNotNone(step(engine))                    # next package starts
+        self.assertEqual(len(up["tiktok"].calls), 4)
 
     def test_not_eligible_never_posted(self):
         engine, up = make_engine(self.root, {})

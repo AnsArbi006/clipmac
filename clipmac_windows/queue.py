@@ -27,6 +27,9 @@ class Queue:
             db.execute("""UPDATE posts SET status=CASE WHEN sent=1 THEN 'unknown' ELSE 'waiting' END,
                        detail=CASE WHEN sent=1 THEN 'Versand prüfen. Der Auftrag bleibt gesperrt.' ELSE 'Wartet nach Neustart.' END
                        WHERE status='uploading'""")
+            # Additive migration: when a post was handed to the platform (package pacing).
+            if 'sent_at' not in {row[1] for row in db.execute('PRAGMA table_info(posts)')}:
+                db.execute('ALTER TABLE posts ADD COLUMN sent_at REAL')
 
     @contextmanager
     def db(self):
@@ -95,9 +98,10 @@ class Queue:
 
     def submitted(self, item):
         with self.db() as db:
-            changed = db.execute("""UPDATE posts SET sent=1, updated=? WHERE clip_id=? AND platform=?
+            now = time.time()
+            changed = db.execute("""UPDATE posts SET sent=1, sent_at=?, updated=? WHERE clip_id=? AND platform=?
                                     AND attempt=? AND status='uploading' AND sent=0""",
-                                 (time.time(), item['id'], item['platform'], item['attempt'])).rowcount
+                                 (now, now, item['id'], item['platform'], item['attempt'])).rowcount
         if changed != 1:
             raise RuntimeError('Uploadversuch wurde bereits versandt oder ist nicht mehr aktiv.')
 
@@ -145,3 +149,19 @@ class Queue:
             row = db.execute('SELECT sent FROM posts WHERE clip_id=? AND platform=? AND attempt=?',
                              (item['id'], item['platform'], item['attempt'])).fetchone()
             return bool(row and row['sent'])
+
+    def package_wait(self, platform, size, pause, now=None):
+        """Seconds until the next post may start: packages of `size` posts, then `pause` seconds rest."""
+        now = time.time() if now is None else now
+        with self.db() as db:
+            times = [row[0] for row in db.execute(
+                'SELECT sent_at FROM posts WHERE platform=? AND sent_at IS NOT NULL ORDER BY sent_at DESC LIMIT 50',
+                (platform,))]
+        package = []
+        for sent_at in times:  # newest first; a gap of at least `pause` begins a new package
+            if package and package[-1] - sent_at >= pause:
+                break
+            package.append(sent_at)
+        if len(package) < size:
+            return 0.0
+        return max(0.0, package[0] + pause - now)

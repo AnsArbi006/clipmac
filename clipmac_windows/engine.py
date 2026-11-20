@@ -306,12 +306,22 @@ class Engine:
             if not (self.running.is_set() and self.cfg.get("upload_enabled")):
                 continue
             enabled = {p for p in self.cfg.get("platforms_enabled", PLATFORMS)
-                       if self.platform_pause[p][0] <= time.time() and self._account_ok(p)}
+                       if self.platform_pause[p][0] <= time.time() and self._package_ok(p) and self._account_ok(p)}
             if not enabled:
                 continue
             item = self.queue.claim(self.cfg["streamers"], enabled, self.cfg["score_threshold"])
             if item:
                 self._publish(item)
+
+    def _package_ok(self, platform):
+        """Post in packages (default 3 clips), then rest (default 60 minutes) per platform."""
+        size = int(self.cfg.get("upload_package_size", 3))
+        rest = float(self.cfg.get("upload_package_pause", 3600))
+        wait = self.queue.package_wait(platform, size, rest)
+        if wait > 0:
+            self.platform_pause[platform] = (time.time() + wait, f"Paket mit {size} Clips gepostet – Pause.")
+            return False
+        return True
 
     def _account_ok(self, platform):
         uploader = self.adapters.uploaders.get(platform)
