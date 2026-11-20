@@ -126,7 +126,11 @@ assert with_error
                 token = re.search(r"const token='([^']+)'", html).group(1)
                 with open_local(base+'/api/state', timeout=3) as response: state = json.load(response)
                 self.assertTrue(state['development'])
-                for endpoint in ('start','twitch','youtube-client','youtube-connect','tiktok/start','tiktok/connect','tiktok/check'):
+                with open_local(base+'/api/live/state', timeout=3) as response: live = json.load(response)
+                self.assertTrue(live['development'])
+                self.assertFalse(any(row['enabled'] for row in live['channels']))
+                for endpoint in ('start','twitch','youtube-client','youtube-connect','tiktok/start','tiktok/connect','tiktok/check',
+                                 'live/start','live/chat-credentials'):
                     request = Request(base+'/api/'+endpoint, data=b'{}', headers={'Content-Type':'application/json','X-ClipMac-Token':token})
                     with self.assertRaises(HTTPError) as ctx: open_local(request, timeout=3)
                     self.assertEqual(ctx.exception.code,400)

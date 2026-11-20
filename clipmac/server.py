@@ -9,9 +9,10 @@ from socketserver import TCPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .state import ROOT, RUNTIME, atomic_json
+from .state import ROOT, RUNTIME, atomic_json, settings
 from .engine import Engine
 from . import publisher
+from .live import LiveHighlights
 from .tiktok_service import TikTokController
 from .environment import DEVELOPMENT, require_live
 
@@ -34,6 +35,7 @@ def serve(port=8768):
         raise RuntimeError(f"ClipMac läuft schon: http://127.0.0.1:{port}")
     engine = Engine()
     tiktok = TikTokController(engine.store)
+    live = LiveHighlights(RUNTIME / "live-highlights")
     csrf = random_secrets.token_urlsafe(32)
     auth_running = threading.Event()
     allowed_hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
@@ -72,7 +74,8 @@ def serve(port=8768):
                 return self.send((ROOT / "clipmac" / "layout-preview.html").read_bytes(), content_type="text/html; charset=utf-8")
             if path == "/feedback-ui.js":
                 return self.send((ROOT / "clipmac" / "feedback-ui.js").read_bytes(), content_type="text/javascript; charset=utf-8")
-            if path in ("/learning-ui.js", "/learning.css", "/gallery.js", "/gallery.css", "/tiktok-ui.js", "/tiktok.css"):
+            if path in ("/learning-ui.js", "/learning.css", "/gallery.js", "/gallery.css", "/tiktok-ui.js", "/tiktok.css",
+                        "/live-ui.js", "/highlights.css"):
                 mime = "text/javascript; charset=utf-8" if path.endswith(".js") else "text/css; charset=utf-8"
                 return self.send((ROOT / "clipmac" / path[1:]).read_bytes(), content_type=mime)
             if path == "/api/learning/export":
@@ -87,6 +90,8 @@ def serve(port=8768):
                     return self.send(tiktok.snapshot())
                 except Exception:
                     return self.send({"error": "TikTok-Status konnte nicht gelesen werden. Lokale Daten prüfen."}, 500)
+            if path == "/api/live/state":
+                return self.send({**live.snapshot(settings()), "development": DEVELOPMENT})
             if path.startswith("/feedback/"):
                 import re
                 match = re.fullmatch(r"/feedback/([a-f0-9]{32})/((?:output|source)-[0-2]\.jpg)", path)
@@ -156,7 +161,21 @@ def serve(port=8768):
                 if path in {"/api/twitch", "/api/youtube-client", "/api/youtube-connect",
                             "/api/reconcile"}:
                     require_live("Kontozugriff")
-                if path == "/api/tiktok/start":
+                if path == "/api/live/start":
+                    require_live("Live-Aufnahme und Twitch-Chat")
+                    live.start(body.get("channel"), settings())
+                elif path == "/api/live/stop":
+                    live.stop(body.get("channel"))
+                elif path == "/api/live/chat-credentials":
+                    require_live("Twitch-Chat-Zugang speichern")
+                    import re
+                    login = body.get("login", "").strip().lower()
+                    access = body.get("access_token", "").strip().removeprefix("oauth:")
+                    if not re.fullmatch(r"[a-z0-9_]{3,25}", login) or not re.fullmatch(r"[A-Za-z0-9]{20,200}", access):
+                        raise ValueError("Bitte Twitch-Login und einen gültigen Benutzer-Token mit chat:read angeben.")
+                    atomic_json(RUNTIME / "credentials" / "twitch_chat.json",
+                                {"login": login, "access_token": access}, private=True)
+                elif path == "/api/tiktok/start":
                     tiktok.start("upload")
                 elif path == "/api/tiktok/stop":
                     tiktok.stop()
@@ -233,6 +252,7 @@ def serve(port=8768):
     except KeyboardInterrupt:
         pass
     finally:
+        live.close()
         tiktok.stop()
         tiktok.shutdown.set()
         engine.pause()
