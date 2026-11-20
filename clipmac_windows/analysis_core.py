@@ -118,6 +118,10 @@ def windows(units, chat_time=None):
     return selected
 
 
+def _token(text):
+    return re.sub(r"\W", "", text.casefold())
+
+
 def validate_analysis(response, units, anchor):
     """Translate model references to verified source quotes and timestamps."""
     first, last = response.get("first"), response.get("last")
@@ -134,19 +138,29 @@ def validate_analysis(response, units, anchor):
             item = raw.get(key)
             if not isinstance(item, dict):
                 continue
-            value, idx, quote = item.get("value"), item.get("unit"), item.get("quote")
-            if type(value) is not int or value not in (0, 1, 2) or type(idx) is not int or not first <= idx <= last:
+            value, quote = item.get("value"), item.get("quote")
+            if type(value) is not int or value not in (0, 1, 2):
                 continue
-            if not isinstance(quote, str) or not 1 <= len(quote.strip()) <= 500:
+            if not isinstance(quote, str) or not 1 <= len(quote.strip()) <= 1000:
                 continue
-            source_words = units[idx]["words"]
-            quote_words = quote.strip().casefold().split()
-            for i in range(len(source_words) - len(quote_words) + 1):
-                span = source_words[i:i + len(quote_words)]
-                if [word["word"].casefold() for word in span] == quote_words:
-                    evidence[key] = {"value": value, "start": span[0]["start"], "end": span[-1]["end"],
-                                     "quote": " ".join(word["word"] for word in span), "reason": reasons[key]}
-                    break
+            # The quote must occur verbatim (ignoring case/punctuation) inside the chosen span.
+            # Small models cite across sentences or with a wrong unit number: search the whole
+            # span and accept the longest verbatim prefix of at least min(3, quote length) words.
+            source_words = [w for unit in units[first:last + 1] for w in unit["words"]]
+            norm = [_token(w["word"]) for w in source_words]
+            quote_words = [t for t in (_token(q) for q in quote.split()) if t]
+            need = min(3, len(quote_words))
+            best = None
+            for i in range(len(norm)):
+                n = 0
+                while n < len(quote_words) and i + n < len(norm) and norm[i + n] == quote_words[n]:
+                    n += 1
+                if n >= need and n and (best is None or n > best[1]):
+                    best = (i, n)
+            if best:
+                span = source_words[best[0]:best[0] + best[1]]
+                evidence[key] = {"value": value, "start": span[0]["start"], "end": span[-1]["end"],
+                                 "quote": " ".join(word["word"] for word in span), "reason": reasons[key]}
     return units[first:last + 1], evidence
 
 

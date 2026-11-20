@@ -1,6 +1,8 @@
 # ClipMac Windows (CM-012). Tests need only Pillow; the rest is for live operation.
 Pillow>=10
 faster-whisper>=1.0
+# faster-whisper 1.2 passes metadata_errors, which PyAV 17+ removed
+av<17
 google-api-python-client>=2.100
 google-auth-oauthlib>=1.2
 google-auth-httplib2>=0.2

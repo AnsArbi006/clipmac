@@ -48,6 +48,15 @@ class CoreTests(unittest.TestCase):
             "hook": {"value": 2, "unit": 0, "quote": "erfunden"}}}, units, 10)
         self.assertEqual(evidence, {})  # quote not in transcript, span > 120 s
 
+    def test_quote_across_sentences_with_wrong_unit_is_verified(self):
+        text = "Wir fahren los. Was ist das? Das gibt es nicht!".split()
+        units = core.utterances([{"start": i * 2.5, "end": i * 2.5 + 2.4, "word": w} for i, w in enumerate(text)])
+        _, evidence = core.validate_analysis({"first": 0, "last": 2, "criteria": {
+            "payoff": {"value": 2, "unit": 0, "quote": "was ist das das gibt es nicht und erfunden"},
+            "hook": {"value": 2, "unit": 0, "quote": "komplett erfunden hier"}}}, units, 1)
+        self.assertEqual(evidence["payoff"]["quote"], "Was ist das? Das gibt es nicht!")
+        self.assertNotIn("hook", evidence)
+
 
 @unittest.skipUnless(FFMPEG, "FFmpeg fehlt")
 class RenderTests(unittest.TestCase):
