@@ -9,7 +9,7 @@ Lies zuerst README.md und Aufgaben.md. Dieses Repository ist eine isolierte Entw
 - Tests und Vorschauen benutzen temporäre/synthetische Daten. Starte für UI-Arbeit `python -m clipmac.dev`, nicht `clipmac.launch`.
 - Keine Produktionszugänge übernehmen, keine echten Uploads, Löschungen, Kontoanmeldungen oder Änderungen am laufenden Mac durchführen. Reale Konto-Abnahme übernimmt der Betreiber separat.
 - Die Entwicklungs-Sperren nicht abschalten, um einen Test oder eine Vorschau zum Laufen zu bringen. Vorhandene Mock-Tests simulieren Plattformen bewusst.
-- Keine Modelltrainings- oder Viralitätsbehauptungen aus gespeicherten Bewertungen ableiten. Momentvorschläge bleiben zunächst rein beratend.
+- Keine Modelltrainings- oder Viralitätsbehauptungen aus gespeicherten Bewertungen ableiten. Momentvorschläge im Mac-Pfad bleiben zunächst rein beratend. CM-012 ist die ausdrücklich beauftragte Ausnahme: unabhängige Windows-Live-App mit automatischen Uploads geeigneter Highlights; aktuelle Spezifikation in Aufgaben.md beachten.
 - GTA-6-Profil: vier Streamer, sieben Stunden, Top fünf pro Streamer, Pakete bis fünf mit 60 Minuten Pause; Änderungen am Profil sind nicht Teil des Backlogs.
 - Ein Ergebnis `pending_review` ist kein Beleg öffentlicher Sichtbarkeit. `upload_unknown` niemals automatisch erneut posten.
 - Keine Geheimnisse, Browserprofile, Videos, Modelle, Logs oder echte Lerndaten committen. Fremde Lizenzhinweise erhalten. `scripts/check_publication.py` ist eine zusätzliche Prüfung, kein vollständiger Geheimnisscanner.

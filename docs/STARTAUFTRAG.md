@@ -1,27 +1,7 @@
-# Startauftrag für einen zweiten Codex-/ChatGPT-Account
+# Aktueller Startauftrag: Windows-Live-Highlights
 
-Diesen Text in einer Entwicklungsumgebung mit Zugriff auf das Repository verwenden:
+Verbindlich ist CM-012 in [Aufgaben.md](../Aufgaben.md) und [Issue #2](https://github.com/AnsArbi006/clipmac/issues/2), aktualisiert am 20.11.2026.
 
-> Arbeite ausschließlich am Repository https://github.com/AnsArbi006/clipmac.
-> Lies AGENTS.md, README.md und Aufgaben.md. Implementiere zunächst CM-001 (optionale YouTube-Analytics-Anbindung), einschließlich synthetischer API-Antworten, Tests und Dokumentation. CM-000 ist bereits die Übergabebasis.
-> Erstelle dafür den Branch task/CM-001-youtube-analytics und anschließend einen Pull Request. Andere Aufgaben bleiben unberührt. Nutze keine produktiven Zugangsdaten und führe keine echten Uploads oder Kontoverbindungen aus. Falls eine echte OAuth-Abnahme nötig ist, dokumentiere die Schritte für den Betreiber, statt Kontodaten anzufordern.
-> Die Verarbeitung bleibt lokal. Analytics erweitert die Datensammlung; es gibt kein Modelltraining und keine automatische Änderung der Clip-Auswahl. Halte dich an die Abnahmekriterien und aktualisiere den Aufgabenstatus auf Zur Prüfung. Berichte, was getestet wurde und was noch nicht verifiziert ist.
+> Lies AGENTS.md und die aktuelle CM-012-Spezifikation. Passe die bereits begonnenen A/B/C-Branches an: eigenständige Windows-App für bis zu zwei Twitch-Livestreams, lokale Chat-Spike-/Momentanalyse, sinnvoller Schnitt, eigenes übersichtliches Dashboard mit fertiger Clipvorschau und getrennten TikTok-/YouTube-Statusanzeigen. Geeignete Highlights nach Aktivierung automatisch auf beiden Plattformen veröffentlichen, TikTok zuerst. Keine Mac-Synchronisierung und kein Abgleich mit dessen Uploadhistorie. Lokale Transaktionssicherheit gegen wiederholtes Absenden nach Fehlern bleibt notwendig. Nur lokale KI. Keine Live-Überwachung auf dem Mac installieren. Implementiere in prüfbaren PRs; entwickle mit synthetischen Daten und Fake-Uploadern. Echte Kontoverbindungen und Windows-Abnahme getrennt dokumentieren. Die frühere reine Vergleichsansicht und Mac-Paketqueue sind für diesen Windows-Pfad ausdrücklich ersetzt.
 
-## Umgebung
-
-Ein öffentlicher Link erlaubt Lesen und Klonen, aber nicht automatisch Schreiben. Für einen PR muss die Umgebung mit einem berechtigten GitHub-Konto verbunden sein; alternativ einen Fork benutzen. Ein zweites ChatGPT-Abo verbindet weder Konten noch lokale Ordner automatisch.
-
-```sh
-git clone --recurse-submodules https://github.com/AnsArbi006/clipmac.git
-cd clipmac
-python3.11 -m venv .venv
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m unittest discover -s tests -v
-.venv/bin/python -m clipmac.dev
-```
-
-Die getestete Zielplattform ist macOS mit Python 3.10–3.12; CI verwendet Python 3.11. Die Untertiteltests benötigen Arial Bold aus macOS. Linux ist noch keine vollständige Render-Zielplattform.
-
-## Übernahme in den Betrieb
-
-PR und CI prüfen, dann nach Freigabe mergen. Deployment erfolgt separat: Warteschlange/Quittungen/Einstellungen sichern, laufende Jobs geordnet abschließen, kompatible Änderungen übernehmen und pausiert starten. Erst nach lokaler Prüfung aktiviert der Betreiber die Automatik. Das Entwickler-Repo wird niemals über das produktive runtime-Verzeichnis kopiert.
+Der GitHub-Zugang muss Lesen/PR-Erstellung erlauben (oder einen Fork verwenden). Produktionszugänge bleiben ausschließlich lokal auf Windows. Feature-Implementierung ist beauftragt, ein einzelner Dokumentations-PR genügt nicht. CM-001 bleibt im Backlog.

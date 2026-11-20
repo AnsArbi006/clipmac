@@ -5,8 +5,8 @@ Stand: 19.11.2026. Diese Liste beschreibt **offene Arbeit**, nicht bereits vorha
 ## Verbindliche Entscheidungen
 
 - Nur lokale KI-Inferenz; keine kostenpflichtigen KI-APIs. Gegenwärtig keine eigene Trainingspipeline.
-- Neue Rankings zunächst nur zum Vergleich. Die produktive Auswahl bleibt nach Twitch-Aufrufen, bis der Betreiber eine Umstellung ausdrücklich beauftragt.
-- Vier Streamer im GTA-6-Profil, sieben Stunden Aktualität, Top fünf pro Streamer, Pakete bis fünf mit mindestens 60 Minuten Pause. Keine stillen Änderungen daran.
+- Mac-Pfad: neue Rankings zunächst nur zum Vergleich. Ausnahme CM-012: eigenständiger Windows-Live-Pfad mit automatischer Veröffentlichung geeigneter Highlights, ausdrücklich beauftragt am 20.11.2026.
+- Bestehender Mac-Pfad: vier Streamer im GTA-6-Profil, sieben Stunden Aktualität, Top fünf pro Streamer, Pakete bis fünf mit mindestens 60 Minuten Pause. Windows-CM-012 besitzt eigene Recorder, Daten und Uploadqueue; keine geräteübergreifende Koordination.
 - Subjektives Feedback, technische Defekte, Modellvorschläge und Plattform-Performance getrennt speichern und anzeigen.
 - Keine Behauptung „Shadowban“, „viral“ oder „besserer Schnitt“ allein aus niedrigen/hohen Views.
 - Keine echten Uploads, Kontoverbindungen oder Löschungen zur Entwicklung. Synthetischer Modus und Mock-APIs; reale Abnahme durch den Betreiber separat.
@@ -32,6 +32,7 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 | CM-008 | P2 | Technische Qualitätsprüfung | M | CM-003 | Offen |
 | CM-009 | P2 | Betrieb, Wiederaufnahme und Diagnose | M | CM-000 | Offen |
 | CM-010 | P2 | Speicherverwaltung und Sicherung | M | CM-003, CM-009 | Offen |
+| CM-012 | P1 | Windows-Live-Highlights mit eigenem Dashboard und Upload | L | CM-000 | Spezifikation aktualisiert |
 
 **Neue Priorität des Betreibers vom 20.11.2026: CM-012 (siehe unten), nach Korrektur des offenen PR #1. CM-001 bleibt im Backlog.**
 
@@ -174,53 +175,61 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 - **Professionalisierung:** Plattformübergreifende Installation, Modell-/Dependency-Hashes, UI-Barrierefreiheit und echte End-to-End-Renderbenchmarks. Remote-Dashboard braucht ein eigenes Authentifizierungs-/Betriebskonzept und ist nicht Teil dieses Auftrags.
 
 
-## CM-012 – Live-Highlights, Viral Score und sinnvolle Langvideo-Schnitte
+## CM-012 – Windows-Live-Highlights mit eigenem Dashboard und Upload
 
-**Status:** Offen. **Priorität:** P1, neuer ausdrücklicher Nutzerauftrag vom 20.11.2026. **Aufwand:** L; in die unten definierten Teil-PRs aufteilen. Erst den offenen Schnittfehler in PR #1 korrigieren. CM-004/005 liefern verwandte Anforderungen und werden durch diese Umsetzung ergänzt, nicht doppelt gebaut. CM-003-Fassungszuordnung für neue Ergebnisse mit berücksichtigen.
+**Verbindliche Änderung vom 20.11.2026:** Diese Fassung ersetzt vollständig die frühere CM-012-Spezifikation. Bereits begonnene A/B/C-Branches daran anpassen. Neue Zielplattform ausschließlich Windows; keine Live-Überwachung auf dem Mac. Bestehende Mac-Top-Clip-Pipeline bleibt ein unabhängiges System. Aufgabe umfasst Implementierung als PRs, nicht nur Recherche.
 
-### Auftrag an den zweiten Account
+### Architektur und Grenzen
 
-Implementiere eine neue integrierte MacClip-Funktion, die Twitch-Livestreams während ihrer Laufzeit überwacht, Chat-Spitzen erkennt, den davor liegenden Kontext aufbewahrt und daraus sinnvoll geschnittene Hochformat-Highlights mit Wortuntertiteln erstellt. Ergänze dieselbe Highlight-Auswahl für lange lokale Videos und Twitch-VODs. Liefere funktionierende Codeänderungen, Tests und Dashboard-Bedienung als Pull Requests; eine Recherche oder ein Konzept allein erfüllt diesen Auftrag nicht. Lokale KI, keine kostenpflichtige Cloud-Inferenz.
+- Eigenständige Windows-Anwendung im selben Repository, eigener Einstiegspunkt, eigener lokaler Dashboard-Server, eigene SQLite-Datenbank, Aufnahmeordner, OAuth-Tokens und TikTok-Browserprofil. Keine gemeinsam geöffnete SQLite-Datei, kein Dateitransfer, keine Mac-API und kein Abgleich mit Mac-Veröffentlichungen. GitHub dient nur dem Quellcodeaustausch.
+- Zwei auswählbare Twitch-Livestreams gleichzeitig überwachen. Auswahl aus bestehenden vier Streamern; keine zusätzlichen fest verdrahteten Namen. Offline-Kanäle alle 60 Sekunden prüfen. Benutzer startet/stoppt den Windows-Auftrag im Dashboard; der PC muss wach bleiben. Kein dauerhaft sichtbarer Browserplayer nötig.
+- Windows nativ unterstützen: kein ungeprüfter Import von `fcntl`, keine macOS-Pfade, `caffeinate`, `say` oder `Meta+A` voraussetzen. Plattformneutrale Bibliotheken und passende Windows-Prozesslocks, Browser-Tastaturkürzel und Systemschriften verwenden. Gemeinsame reine Schnitt-/Score-Helfer dürfen wiederverwendet werden; bestehende Mac-Einstiegspunkte nicht auf Windows umbiegen.
+- Rechenarbeit lokal: FFmpeg/Streamlink, Whisper, Ollama. Keine Codex-/Cloud-KI-Dauerschleife. Ein Render-/Analyseworker, zwei Recorder; Pufferaufzeichnung darf durch Rendering nicht blockieren.
+- Kein geräteübergreifender Duplikatabgleich gewünscht. Trotzdem lokale Wiederholungen desselben Windows-Uploadauftrags verhindern: lokale Versuch-ID und Plattformquittung, damit ein Timeout keinen zweiten identischen Post auslöst. Das ist Transaktionssicherheit, keine Recherche der vorhandenen Kanalvideos.
+- GTA-6-Kategorie bleibt als bisherige Inhaltsvorgabe erhalten; während der Aufnahme prüfen. Die Mac-Regeln Top fünf/letzte sieben Stunden/Fünferpakete sind keine gemeinsame Windows-Queue. Windows erstellt frische Live-Highlights und veröffentlicht sie nach Eignungsprüfung; keine künstliche Auffüllung einer Clipanzahl und keine Synchronisierung der Postingzeiten mit dem Mac.
 
-### Konkrete Referenzrepos
+### A – Live-Momente erkennen
 
-- Hauptreferenz: https://github.com/st1fo/stream-clipper/tree/70ec4edc1f27be062ad1a4822aa87b84f8d5f85e . README beschreibt Live-Ringpuffer und Chat-Erkennung sowie einen VOD-Modus. Relevante Bereiche sind `stream_clipper/`, `config/` und `tests/`. Als Architekturreferenz lesen; weder Funktionsfähigkeit auf unserem Mac noch Qualität der Scores wurde hier getestet.
-- Kleine ergänzende Referenz: https://github.com/Higuy3000/twitch-clipbot/tree/3431055027862565bfb903185088d36047cdd00f . Einstiegspunkte: `clipbot/chat.py`, `detector.py`, `recorder.py`, `clipper.py`, `retention.py`. Beschreibt ebenfalls Aufnahme und Chat-getriggerte Clips.
-- Bei beiden Repositories meldete GitHub am Recherchezeitpunkt keine erkannte Lizenz. Vor Codeübernahme Lizenz und konkrete Revision prüfen und Herkunft dokumentieren. Ohne passende Erlaubnis keine Dateien/Codefragmente übernehmen; Funktion eigenständig auf Basis geeigneter lizenzierter Bibliotheken wie Streamlink/FFmpeg und der Twitch-Schnittstellen implementieren. Keine fremden Installationsskripte ungeprüft ausführen.
+- Fünf Minuten Ringpuffer je Stream, fünfsekündige Segmente. Kandidaten reservieren Vor-/Nachlauf, alte unreservierte Segmente automatisch aufräumen. Insgesamt 5 GB Pufferlimit; unter 5 GB freiem Datenträgerspeicher geordnet pausieren und Warnung zeigen.
+- Aktuell unterstützten Twitch-Chatzugang implementieren und Rechte dokumentieren. Chat lesen, keine Nachrichten senden. Standardmäßig nur aggregierte Aktivität speichern, keine dauerhafte Rohchat-/Nutzerhistorie.
+- V1-Spike-Detektor: 10-Sekunden-Fenster, 180 Sekunden vorherige Baseline ohne aktuelles Fenster. Nach Warmup mindestens 15 Nachrichten von fünf unterschiedlichen Teilnehmern, mindestens dreifache normale Nachrichtenrate und robuste Abweichung von mindestens drei MAD; Nenner jeweils mindestens 1. Wiederholungen eines Nutzers begrenzen. Konfigurierbare Startwerte, kein behauptetes Modelltraining. Verbindungsabbrüche als Datenlücke behandeln, danach neu aufwärmen.
+- Empfangszeiten auf Medienzeit abbilden. Konfigurierbarer Reaktionsversatz zunächst sechs Sekunden; Fenster zunächst 30 Sekunden davor und danach. Nahe Ereignisse innerhalb 60 Sekunden zusammenführen, maximal 120 Sekunden. Fehlender Kontext, unbekannte Kategorie oder gemischte Streamsitzungen dürfen nicht automatisch freigegeben werden.
 
-### Teil-PR A: Live-Aufzeichnung und Spike-Erkennung
+### B – Sinnvoll schneiden und Eignung bewerten
 
-- Dashboard: eigener Bereich „Live-Highlights“, vier bestehende Streamer, pro Kanal Start/Stopp, offline/verbunden/wärmt auf/zeichnet auf/Fehler, Pufferdauer und belegter Speicher. Standard deaktiviert, kein Autostart nach Installation. Offline-Kanäle alle 60 Sekunden prüfen. Der Mac muss wach und der Prozess aktiv sein; kein dauerhaft offener Browserplayer nötig.
-- Streamlink/FFmpeg in einen lokalen 5-Minuten-Ringpuffer mit 5-Sekunden-Segmenten aufnehmen. Nur ausgewählte Kanäle; zuerst maximal zwei gleichzeitige Recorder, weitere sichtbar wartend. Alte unreservierte Segmente entfernen; Kandidaten reservieren benötigte Segmente bis zum abgeschlossenen Export. Insgesamt maximal 5 GB Live-Puffer; bei weniger als 5 GB freiem Speicher Aufnahme geordnet pausieren und warnen, niemals aktive Segmente löschen.
-- Twitch-Chat über aktuell unterstützte Schnittstelle lesen. Authentifizierung, notwendige Rechte und Wiederverbindung dokumentieren; keine nicht verifizierte anonyme Zugangsmöglichkeit voraussetzen. Keine Chatnachrichten senden. Nachrichten zählen, unterschiedliche Teilnehmer pro Zeitfenster erkennen; Nutzerkennungen nur flüchtig, standardmäßig keine Rohtexte dauerhaft speichern.
-- Eigenständiger v1-Detektor: 10-Sekunden-Fenster, vorherige 180 Sekunden als Baseline ohne aktuelles Fenster. Trigger erst nach Aufwärmphase: mindestens 15 Nachrichten und fünf unterschiedliche Teilnehmer, Nachrichtenrate mindestens dreimal Baseline (Nenner mindestens 1 Nachricht/Fenster), zusätzlich robuste Abweichung mindestens drei MAD mit Nenner mindestens 1. Schwellen konfigurierbar; diese Startwerte sind Heuristiken, kein trainiertes Modell. Wiederholungen desselben Nutzers begrenzen. Disconnects zählen als Datenlücke, nicht als ruhiger Chat.
-- Zeitbasis: Empfangszeiten und Medien-PTS zuordnen; Chat-Reaktionsversatz zunächst konfigurierbare 6 Sekunden. Kandidat zunächst 30 Sekunden vor bis 30 Sekunden nach korrigiertem Trigger. Nahe Ereignisse innerhalb 60 Sekunden zusammenführen, maximal 120 Sekunden. Bei fehlendem Vorlauf sichtbar als unvollständig markieren. Nach Reconnect neu aufwärmen. Keine Überschneidung verschiedener Streamsitzungen.
-- Kategorie während der Aufnahme prüfen und mit Segmentzeiten speichern. Bestehender GTA-6-Filter bleibt verbindlich; unbekannte oder wechselnde Kategorie im Kandidaten führt zu Prüfbedarf, nicht stiller Freigabe.
+- Aus längeren Live-Passagen zusammenhängende Highlights erstellen: verständlicher Einstieg, Kontext vor dem Höhepunkt, vollständige Sätze und Abschluss/Reaktion. Ziel 20–60 Sekunden, höchstens 120 Sekunden bei benötigtem Kontext. Nicht nur nach starren Sekunden oder Lautstärke schneiden. Bestehende Wortuntertitel, Facecam-Drittel und Fullcam-Wechsel wiederverwenden und auf Windows prüfen.
+- Lokales Transkript mit Wortzeiten; bei langen Quellen in 10-Minuten-Blöcken mit 30 Sekunden Überlappung arbeiten und Zeitmarken deduplizieren. Die vorhandene Kurzclip-Längenprüfung nicht global entfernen. Separater VOD-/Dateiimport ist nachrangig und darf die Windows-Live-Version nicht blockieren; Altvideos standardmäßig nicht automatisch veröffentlichen.
+- „Viral Score (experimentell)“ 0–100 als Redaktionshilfe, keine Erfolgswahrscheinlichkeit. V1: Chat-Stärke 20 %, Teilnehmerbreite 15 %, Einstieg 20 %, Kontext 20 %, Höhepunkt/Abschluss 25 %. Chat-Werte relativ zur eigenen Baseline: 1×→0, 5×→100, dazwischen linear/begrenzt. Lokales LLM liefert Textkriterien 0/1/2 mit echten Zeitbelegen; diese auf 0–100 skalieren. Fehlende Signale oder ungültige Modellantwort → keine automatische Freigabe. Keine automatische Gewichtsänderung/Trainingspipeline.
+- Standard „lohnt sich“: bestätigter Chat-Spike, vollständiger Live-Score mindestens 70, Kontext und Abschluss jeweils mindestens 1/2, bekannte passende Kategorie und alle technischen Prüfungen bestanden. Schwelle im Dashboard einstellbar. Das sind konservative v1-Startwerte ohne empirische Erfolgsgarantie. Unterhalb der Schwelle lokal ablegen/überspringen, keine Uploadquote auffüllen.
+- Technische Prüfungen: decodierbare Bild-/Tonspuren, gültige Ausschnitte und Untertitelzeiten, keine abgeschnittenen Texte, plausible Dauer und A/V-Synchronität. Schnittfassung, Herkunft und Score-Version speichern. Begründungen intern für Diagnose, keine verpflichtende Erklärungsansicht im Dashboard.
 
-### Teil-PR B: Lange Videos und sinnvolle Schnittgrenzen
+### C – Eigenständig auf TikTok und YouTube veröffentlichen
 
-- Import einer lokalen Datei oder einer expliziten Twitch-VOD-URL, abbrechbarer Analyseauftrag mit Fortschritt. Lange Quellen separat verarbeiten: die bisherige 190-Sekunden-Grenze von `cut_silence()` nicht pauschal entfernen. Stattdessen abschnittsweise mit 30 Sekunden Überlappung transkribieren, absolute Zeitmarken erhalten und deduplizieren; zunächst 10-Minuten-Analyseblöcke, ein CPU-Analyseworker.
-- Aus Chat-Ereignissen, Transkript und optional lokaler Audioenergie Kandidaten vorschlagen. Ohne Chat Datenbasis sichtbar kennzeichnen. Reine Lautstärke oder Emotes nicht automatisch als Humor klassifizieren.
-- Lokales Ollama prüft verständlichen Einstieg, erforderlichen Kontext, Reaktion/Höhepunkt und Abschluss. Jede Aussage braucht Zeitmarken und Transkriptbelege. Fehlende Evidenz ergibt „nicht beurteilbar“; keine erfundenen Handlungen. Ungültiges JSON/Timeout begrenzt behandeln.
-- Ziel 20–60 Sekunden; bis 120 Sekunden, wenn der Sinn es erfordert. An tatsächlichen Satz-/Pausengrenzen schneiden, Kontext vor der Pointe erhalten und Reaktion auslaufen lassen. Keine Satzhälften nur wegen eines Längenziels abschneiden. Zunächst zusammenhängende Ausschnitte, keine Umstellung der Chronologie und keine erfundenen Hooks. Innenpausen vorsichtig kürzen; relevante stille Bildmomente zur Prüfung markieren.
-- Vorhandene Facecam-/Fullcam-Pipeline und Wortuntertitel wiederverwenden. Original, Zeitzuordnung, Schnittfassung und Begründung speichern. Bereits veröffentlichte Dateien unverändert lassen.
+- Windows lädt geeignete Highlights selbst hoch, TikTok zuerst und anschließend YouTube. Beide Plattformen im Normalbetrieb aktiv; getrennte Verbindung/Startfreigabe im Dashboard. Keine manuelle Freigabe jedes geeigneten Clips erforderlich, sobald der Nutzer die Windows-Automatik aktiviert hat. Dies ersetzt für CM-012 ausdrücklich die frühere Vorgabe „nur vergleichen“.
+- Eigene Kontoanmeldung auf Windows; keine Cookies/Tokens vom Mac oder über GitHub übertragen. Vor Upload Zielkonto bestätigen. Zielkonten lokal konfigurieren, keine privaten Daten ins öffentliche Repo. Bestehende Uploadlogik soweit plattformneutral wiederverwenden, Windows-Anpassungen separat testen.
+- Pro Plattform eigene persistente Zustände: wartet, lädt hoch, übermittelt/in Prüfung, öffentlich bestätigt, fehlgeschlagen, Ergebnis unklar. TikTok-Fehler dürfen einen ansonsten zulässigen YouTube-Upload nicht dauerhaft blockieren; erfolgreiche Plattform nicht erneut bedienen, wenn nur die andere wiederholt wird.
+- Automatisch weiterarbeiten, solange Aufnahme/Upload aktiviert ist. Plattformlimits, Quotas, Loginprobleme und CAPTCHAs respektieren und sichtbar pausieren; kein Umgehen von Plattformprüfungen. Unklarer Versand wird nicht blind wiederholt. Stop verhindert neue Aufgaben und neue Posts; bereits übermitteltes Ergebnis noch zuordnen.
 
-### Teil-PR C: Viral Score und Vorschau
+### Dashboard – bewusst einfach und passend zu Windows
 
-- Anzeige „Viral Score (experimentell)“ von 0–100; ausdrücklich keine Erfolgswahrscheinlichkeit und kein Nachweis von Viralität. Einzelwerte und Gründe anzeigen: Chat-Spitze, Vielfalt reagierender Teilnehmer, Einstieg, Kontextverständlichkeit, Höhepunkt/Abschluss.
-- Versionierte v1-Gewichte: Chat-Stärke 20 %, Teilnehmerbreite 15 %, Einstieg 20 %, Kontext 20 %, Höhepunkt/Abschluss 25 %. Textkriterien lokal als 0/1/2 mit Belegen beurteilen und auf 0–100 skalieren. Chat-Stärke aus Verhältnis zur Baseline: 1×→0, 5×→100, dazwischen linear und begrenzt. Teilnehmerbreite analog gegenüber der eigenen historischen Teilnehmer-Baseline. Keine absoluten Vergleiche großer und kleiner Streamer.
-- Fehlender Chat darf nicht als null eingehen. Bei VOD ohne Chat separate textbasierte Wertung mit normalisierten verfügbaren Gewichten und Kennzeichnung „ohne Chat“; nicht mit vollständigem Live-Score in eine gemeinsame Rangliste mischen. Bei fehlenden Textbelegen keine Gesamtwertung erzwingen. Technische Fehler separat sperren, nicht durch guten Score kompensieren.
-- Kandidatenkarten mit Vorschau, Score-Aufschlüsselung, Quellenzeit, vorgeschlagenem Schnitt und Gut/Mittel/Schlecht sowie Fehlerbericht. Ab 60 Punkten standardmäßig als empfohlen markieren, ohne automatisch zu veröffentlichen. Schwelle lokal konfigurierbar, Modell-/Prompt-/Score-Version speichern.
-- Die bisherige Entscheidung „erst vergleichen“ gilt weiter: neuer Live-/VOD-Pfad erzeugt zunächst Review-Kandidaten. Freigegebene aktuelle Live-Kandidaten dürfen über eine bewusste Dashboard-Aktion in die bestehende Paketqueue; keine neue parallele Uploadfunktion. Ältere VOD-Highlights bleiben lokal, da sie die bestehende Sieben-Stunden-Regel nicht erfüllen. Vor Upload alle bisherigen Kategorie-, Alters-, Sperr- und Duplikatregeln erneut prüfen.
-- Für Live-/VOD-Kandidaten Herkunft und ID sauber modellieren: Stream-ID/VOD-ID plus Zeitintervall und Medienhash; keine erfundenen Twitch-Clip-IDs. Doppelte/überlappende Ausschnitte auch gegenüber bereits bekannten Twitch-Clips abgleichen, soweit VOD-Zuordnung vorhanden; unklare Herkunft kennzeichnen. Datenmodell und Paketadapter additiv migrieren.
+- Breite Desktop-Oberfläche: oben genau zwei Streamkarten mit Kanalname, live/offline/verbunden, Chat-Aktivität, Aufnahmestatus, Start/Stopp. Darunter Clipgalerie und kompakter Arbeitsfortschritt.
+- Je Clip Thumbnail, Streamer, Zeitpunkt, Dauer, Score und abspielbare **fertige Schnittfassung**. Optional „Originalausschnitt“ zum Vergleich; Schnittanfang/-ende sichtbar. Ein Thumbnail allein erfüllt die Schnittvorschau nicht.
+- Zwei separate Plattformfelder mit Videolink: TikTok und YouTube. Grünes Häkchen erst bei bestätigter öffentlicher Veröffentlichung. Bei TikTok-Moderation ausdrücklich „In Prüfung“, bei unklarem Ergebnis „Prüfen“. Niemals einen erfolgreichen API-/Formularversand als bestätigte Öffentlichkeit ausgeben.
+- Fehler mit kurzer Handlungsempfehlung, Fortschritt von Erkennung→Analyse→Schnitt→Upload. Keine unnötige Erklärungspflicht, Diagrammflut oder Volltext-Chatansicht.
 
-### Abnahme und Tests
+### Referenzen und Herkunft
 
-1. Synthetischer Chat: normale Rate, echter Burst vieler Teilnehmer, Spam eines Nutzers, dauerhaft großer Chat, stille Baseline, Reconnect, verzögerte Nachrichten. Trigger, Warmup und Zusammenführung deterministisch testen.
-2. Synthetische segmentierte Aufnahme: Vor-/Nachlauf, fehlende Segmente, Chatversatz, Kategorie-Wechsel, voller Datenträger, Stop während Aufnahme/Export und Neustart. Keine Endlosqueues oder unkontrolliert wachsende Dateien.
-3. Langes synthetisches Video mit Pointe an einer Blockgrenze: Kontext und Abschluss im selben Short, absolute Wortzeiten korrekt, keine doppelten Highlights. A/V-Längendifferenz aus PR #1 als Regression erhalten.
-4. Score: fehlende Signale, ungültige Modellantwort, Prompt-Injection aus Chat/Transkript, Grenzwerte, nachvollziehbare Gewichtung und Versionsänderungen. Keine fehlenden Kennzahlen als Erfolg ausgeben.
-5. Vollständiger trockener Ablauf Aufnahme→Trigger→Schnitt→Untertitel→Dashboard ohne Plattform-Upload. Entwicklungsmodus muss auch neue Recorder-/Netzwerk-Startendpunkte blockieren; Tests mit lokalen Fixtures und Mocks.
-6. Ressourcen messen: CPU/RAM, Pufferverbrauch, Renderdauer und Verzögerung pro Kandidat für einen und zwei simulierte Kanäle. Vollständige bestehende Suite und CI grün. Reale Live-Abnahme separat durch Betreiber dokumentieren; synthetische Tests allein bestätigen keine robuste Livestream-Integration.
+- https://github.com/st1fo/stream-clipper/tree/70ec4edc1f27be062ad1a4822aa87b84f8d5f85e : README beschreibt Ringpuffer, Chat-Spikes und VOD-Auswahl; Architekturreferenz, nicht auf unserem Windows-PC verifiziert.
+- https://github.com/Higuy3000/twitch-clipbot/tree/3431055027862565bfb903185088d36047cdd00f : Referenzmodule `chat.py`, `detector.py`, `recorder.py`, `clipper.py`, `retention.py`.
+- Bei Recherche keine von GitHub erkannte Lizenz. Vor jeder Übernahme konkrete Lizenz prüfen; ohne Erlaubnis keine Codekopie. Geeignete lizenzierte Bibliotheken verwenden und Funktion eigenständig implementieren. Keine fremden Installer ungeprüft ausführen.
 
-**Ergebnis:** Drei fokussierte PRs A/B/C mit Dokumentation, Tests, sichtbarer Vorschau und Grenzen. Keine eigene Modelltrainingspipeline in dieser Aufgabe. Höhere Zuschauerbindung bleibt eine anschließend zu messende Hypothese; CM-001/002 bleiben dafür relevant.
+### Abnahme / Lieferung
+
+1. Windows-CI und dokumentierter frischer Windows-Start ohne macOS-Abhängigkeiten. Bestehende Mac-Tests weiterhin grün. Entwicklungsmodus mit synthetischen Streams und Fake-Uploadern, produktive Netz-/Uploadaktionen standardmäßig gesperrt.
+2. Zwei synthetische Streams gleichzeitig: normale Aktivität, echter Burst, Spam, stille Baseline, Reconnect und Kategorie-Wechsel. Kontextreservierung, Zusammenführung, Zeitversatz und keine Vermischung zwischen Kanälen prüfen.
+3. Synthetische lange Quelle: Höhepunkt an Blockgrenze, Satzanfang/-ende erhalten, Wortzeiten nach Kürzung korrekt, A/V-Längendifferenz aus PR #1 als Regression. Abspielbare Original-/Schnittvorschau auf Windows zeigen.
+4. Eignung: schlechte/unklare Kandidaten nicht posten; geeignete automatisch an beide Fake-Plattformen. Fehlender Chat/LLM-Ausfall darf keine Freigabe erzeugen. Persistente Score-Version und Belege.
+5. Uploadfälle: TikTok erfolgreich/YouTube fehlgeschlagen und umgekehrt, Moderation, unklarer Ausgang, Quota, Neustart, Stop und erneute Anmeldung. Plattformstatus wahrheitsgemäß; keine Wiederholung bereits bestätigter Windows-Uploads. Kein Mac-Abgleich und keine Übertragung zum Mac.
+6. Zwei-Stream-Probelauf: CPU/RAM, Pufferverbrauch, Verarbeitungsdauer und Warteschlangenwachstum messen. Speicherlimit, fehlende Segmente und Prozessabsturz testen. Tatsächliche Windows-/Live-/Konto-Abnahme getrennt von Mock-Belegen dokumentieren.
+
+**Lieferung:** Bestehende CM-012-A/B/C-PRs an diese Vorgaben anpassen: A = Windows-Recorder und Chat, B = Schnitt/Eignung, C = eigenes Dashboard und getrennte Windows-Uploader. Nach überprüfbarer Implementierung und lokaler Kontoeinrichtung soll die Windows-App unabhängig vom Mac arbeiten. Keine Installation oder Aktivierung der Live-Überwachung auf dem Mac.
