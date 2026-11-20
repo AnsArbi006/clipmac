@@ -13,6 +13,7 @@ from .state import ROOT, RUNTIME, atomic_json, settings
 from .engine import Engine
 from . import publisher
 from .live import LiveHighlights
+from .long_highlights import LongHighlights
 from .tiktok_service import TikTokController
 from .environment import DEVELOPMENT, require_live
 
@@ -36,6 +37,7 @@ def serve(port=8768):
     engine = Engine()
     tiktok = TikTokController(engine.store)
     live = LiveHighlights(RUNTIME / "live-highlights")
+    highlights = LongHighlights(RUNTIME / "highlight-analysis")
     csrf = random_secrets.token_urlsafe(32)
     auth_running = threading.Event()
     allowed_hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
@@ -75,7 +77,7 @@ def serve(port=8768):
             if path == "/feedback-ui.js":
                 return self.send((ROOT / "clipmac" / "feedback-ui.js").read_bytes(), content_type="text/javascript; charset=utf-8")
             if path in ("/learning-ui.js", "/learning.css", "/gallery.js", "/gallery.css", "/tiktok-ui.js", "/tiktok.css",
-                        "/live-ui.js", "/highlights.css"):
+                        "/live-ui.js", "/highlights.css", "/highlight-ui.js"):
                 mime = "text/javascript; charset=utf-8" if path.endswith(".js") else "text/css; charset=utf-8"
                 return self.send((ROOT / "clipmac" / path[1:]).read_bytes(), content_type=mime)
             if path == "/api/learning/export":
@@ -92,6 +94,13 @@ def serve(port=8768):
                     return self.send({"error": "TikTok-Status konnte nicht gelesen werden. Lokale Daten prüfen."}, 500)
             if path == "/api/live/state":
                 return self.send({**live.snapshot(settings()), "development": DEVELOPMENT})
+            if path == "/api/highlights/state":
+                return self.send({**highlights.snapshot(), "development": DEVELOPMENT})
+            if path.startswith("/highlight-video/"):
+                try:
+                    return self.video(highlights.preview(path.removeprefix("/highlight-video/")))
+                except (ValueError, OSError):
+                    return self.send({"error": "Vorschau nicht verfügbar."}, 404)
             if path.startswith("/feedback/"):
                 import re
                 match = re.fullmatch(r"/feedback/([a-f0-9]{32})/((?:output|source)-[0-2]\.jpg)", path)
@@ -161,7 +170,27 @@ def serve(port=8768):
                 if path in {"/api/twitch", "/api/youtube-client", "/api/youtube-connect",
                             "/api/reconcile"}:
                     require_live("Kontozugriff")
-                if path == "/api/live/start":
+                if path == "/api/highlights/start":
+                    kind = body.get("kind")
+                    if kind == "vod":
+                        require_live("Twitch-VOD herunterladen")
+                    if kind not in {"local", "vod"}:
+                        raise ValueError("Bitte lokale Datei oder Twitch-VOD wählen.")
+                    job = highlights.start(body.get("source", ""), kind, settings())
+                    return self.send({"ok": True, "job": job})
+                elif path == "/api/highlights/analyze-live":
+                    require_live("Live-Kandidat analysieren")
+                    cfg = settings()
+                    candidate = next((row for row in live.snapshot(cfg)["candidates"] if row["id"] == body.get("id")), None)
+                    if candidate is None:
+                        raise ValueError("Live-Kandidat ist nicht verfügbar.")
+                    job = highlights.start_live(candidate, live.export, cfg)
+                    return self.send({"ok": True, "job": job})
+                elif path == "/api/highlights/cancel":
+                    highlights.cancel(body.get("id"))
+                elif path == "/api/highlights/render":
+                    highlights.render(body.get("id"))
+                elif path == "/api/live/start":
                     require_live("Live-Aufnahme und Twitch-Chat")
                     live.start(body.get("channel"), settings())
                 elif path == "/api/live/stop":
@@ -252,6 +281,7 @@ def serve(port=8768):
     except KeyboardInterrupt:
         pass
     finally:
+        highlights.close()
         live.close()
         tiktok.stop()
         tiktok.shutdown.set()

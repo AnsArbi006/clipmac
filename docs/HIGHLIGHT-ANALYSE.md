@@ -1,0 +1,13 @@
+# CM-012 · Langvideo-Analyse und Vorschau
+
+Unter **Highlight-Analyse** eine Videodatei auf dem Mac per absolutem Pfad oder ein Twitch-VOD per `https://www.twitch.tv/videos/<ID>` auswählen. Bei einem erkannten Live-Moment beginnt die Analyse über **Ausschnitt analysieren**, sobald der benötigte Puffer vorliegt. Der Fortschritt erscheint unter dem Importformular. **Abbrechen** setzt den Abbruch für den aktiven Auftrag. Die gegenwärtige Whisper-Inferenz kann bis zum nächsten Blockübergang weiterlaufen.
+
+Ein lokaler Worker transkribiert abschnittsweise. Die Blöcke sind höchstens zehn Minuten lang und überlappen um 30 Sekunden. Wortzeiten bleiben auf der Zeitachse der Quelle. Überlappende Wörter werden vor der Auswahl dedupliziert. Live-Chat kann den Suchbereich priorisieren. Bei einer Datei oder einem VOD stehen zunächst Wortzeiten und die lokale Textanalyse zur Verfügung.
+
+Die Auswahl verwendet zusammenhängende Sprechabschnitte. Das Längenziel sind 20 bis 60 Sekunden mit bis zu 120 Sekunden für längeren Kontext. Die lokale Ollama-Abfrage prüft Einstieg, Kontext und Höhepunkt/Abschluss. Gespeicherte Belege haben Zeitmarken und ein Zitat aus dem Transkript. Bei fehlenden Belegen erscheint ein Prüfhinweis. Größere stille Stellen innerhalb des Ausschnitts können wichtige Bildmomente enthalten und brauchen redaktionelle Prüfung.
+
+ClipMac kürzt bestätigte Innenpausen ab drei Sekunden behutsam, wenn die Stille vollständig zwischen zwei transkribierten Wörtern liegt. Pro Pause werden höchstens zwei Sekunden entnommen, insgesamt höchstens 15 Prozent. An jeder Seite bleiben mindestens 0,8 Sekunden Puffer. Anfang und Ende bleiben erhalten. Die Untertitel folgen der bearbeiteten Zeitachse, die Schnittdaten speichern die Zuordnung zur Quelle.
+
+ClipMac rendert eine erste lokale Hochformatvorschau und kann weitere Fassungen auf Anforderung rendern. Die Vorschau nutzt das vorhandene Layout und vorhandene Wortuntertitel. Ursprungsdatei, Quellenzeit, Quelle und gerenderte Fassung bleiben nachvollziehbar. Die Langvideo-Datei dient der Analyse, der eigentliche Schnitt und Render nutzt nur den ausgewählten kurzen Ausschnitt. Die Clipgrenze der bisherigen Pipeline bleibt bei 190 Sekunden.
+
+Erforderlich sind FFmpeg mit libass, die bestehenden Whisper-Abhängigkeiten und bei lokaler Modulbewertung der Ollama-Dienst aus [Installation](INSTALLATION.md). Eine deaktivierte oder nicht erreichbare Modellanalyse führt zu Vorschlägen mit fehlenden Belegen. Für den VOD-Import verwendet ClipMac den vorhandenen `yt-dlp`-Client. Im isolierten Entwicklungsmodus sind Live- und VOD-Zugriffe sowie Ollama-Aufrufe gesperrt.

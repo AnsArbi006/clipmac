@@ -24,6 +24,18 @@ dialog{color:var(--text);background:var(--surface);border:1px solid var(--line);
   <h3>Erkannte Momente</h3>
   <div id="live-candidates" class="highlights-grid"></div>
 </section>
+<section class="panel highlights-panel" aria-labelledby="analysis-heading">
+  <div class="highlights-heading"><div><h2 id="analysis-heading">Highlight-Analyse</h2><p>Aus längeren Videos zusammenhängende Shorts mit Wortuntertiteln vorbereiten.</p></div></div>
+  <form id="highlight-import" class="highlights-form">
+    <label>Quelle<select name="kind"><option value="local">Datei auf diesem Mac</option><option value="vod">Twitch-VOD</option></select></label>
+    <label><span id="highlight-source-label">Absoluter Dateipfad</span><input name="source" required></label>
+    <button type="submit">Analysieren</button>
+  </form>
+  <p id="highlight-error" role="status"></p>
+  <div id="highlight-jobs" class="highlights-grid"></div>
+  <h3>Schnittvorschläge</h3>
+  <div id="highlight-candidates" class="highlights-grid"></div>
+</section>
 <section class="stats"><div class="stat"><b>7 Stunden</b><span>ZEITFENSTER</span></div><div class="stat"><b id="count">0</b><span>CLIPS IN ARBEIT</span></div><div class="stat"><b id="ready">0</b><span>BEREIT ZUM UPLOAD</span></div><div class="stat"><b id="spacing">Ohne Wartezeit</b><span>UPLOADPLAN</span></div></section>
 <section class="panel tiktok-panel" aria-labelledby="tiktok-heading">
 <div class="tiktok-heading"><div class="tiktok-identity"><span class="tiktok-icon" aria-hidden="true">♪</span><div><h2 id="tiktok-heading">TikTok <span id="tiktok-account"></span></h2><p>Deine fertigen Clips. Ein eigener Uploadlauf.</p></div></div><span id="tiktok-phase" class="tiktok-phase">Lade Status …</span></div>
@@ -59,4 +71,4 @@ $('status').textContent=(s.active?'Automatik läuft · '+(s.publish_stage||s.sta
 $('rated-count').textContent=s.learning?.rated_count||0;renderGallery(s);
 const events=$('events');events.replaceChildren();for(const e of s.events)events.append(el('div',new Date(e.at*1000).toLocaleTimeString('de-DE')+' · '+e.message,'event'))}
 
-</script><script src="/learning-ui.js"></script><script src="/gallery.js"></script><script src="/feedback-ui.js"></script><script src="/tiktok-ui.js"></script><script src="/live-ui.js"></script></body></html>
+</script><script src="/learning-ui.js"></script><script src="/gallery.js"></script><script src="/feedback-ui.js"></script><script src="/tiktok-ui.js"></script><script src="/live-ui.js"></script><script src="/highlight-ui.js"></script></body></html>

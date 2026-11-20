@@ -5,7 +5,8 @@
   const form = document.getElementById('live-chat-form');
   const labels = {
     off: 'Aus', offline: 'Offline', connected: 'Verbunden', warming: 'Wärmt auf',
-    recording: 'Zeichnet auf', waiting: 'Wartet auf freien Recorder', paused: 'Pausiert', error: 'Fehler',
+    recording: 'Zeichnet auf', waiting: 'Wartet auf freien Recorder', paused: 'Pausiert',
+    stopping: 'Wird beendet', error: 'Fehler',
   };
   const megabytes = bytes => `${(Number(bytes || 0) / 1_000_000).toLocaleString('de-DE', {maximumFractionDigits: 1})} MB`;
   const clock = seconds => new Date(seconds * 1000).toLocaleTimeString('de-DE');
@@ -68,6 +69,20 @@
       card.append(el('strong', row.channel), el('p', time), el('p', chat));
       if (row.coverage !== 'complete') card.append(el('p', 'Pufferabdeckung prüfen'));
       if (row.category_review) card.append(el('p', 'Kategorie prüfen'));
+      const analyze = el('button', 'Ausschnitt analysieren');
+      analyze.type = 'button';
+      analyze.disabled = !['complete', 'exported'].includes(row.coverage);
+      analyze.onclick = async () => {
+        analyze.disabled = true;
+        try {
+          await post('highlights/analyze-live', {id: row.id});
+          document.getElementById('analysis-heading').scrollIntoView({block: 'start'});
+        } catch (error) {
+          status.textContent = error.message;
+          analyze.disabled = false;
+        }
+      };
+      card.append(analyze);
       return card;
     });
     candidates.replaceChildren(...(cards.length ? cards : [el('p', 'Bisher wurden keine Chat-Spitzen erkannt.')]));
@@ -83,6 +98,7 @@
       document.getElementById('live-disk').textContent = `${megabytes(state.bytes)} von ${megabytes(state.limit_bytes)}`;
       for (const element of form.elements) element.disabled = state.development;
       if (state.development) status.textContent = 'Entwicklungsmodus · Live-Aufnahmen sind gesperrt.';
+      else if (state.error) status.textContent = state.error;
       renderChannels(state);
       renderCandidates(state.candidates);
     } catch (error) {
