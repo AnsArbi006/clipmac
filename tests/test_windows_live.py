@@ -165,6 +165,23 @@ class BufferTests(unittest.TestCase):
         self.assertTrue(buffer.coverage(buffer.candidates[key]))
         self.assertNotIn("00000000.ts", left)
 
+    def test_locked_segment_is_kept_and_retried(self):
+        from unittest import mock
+        buffer, sid = self.session(segments=40)
+        real_unlink = Path.unlink
+
+        def locked(path, *a, **k):
+            if path.name == "00000000.ts":
+                raise PermissionError("in use")
+            return real_unlink(path, *a, **k)
+
+        with mock.patch.object(Path, "unlink", locked):
+            buffer.prune(1200 + 300 + 100)  # must not crash
+        names = {s["name"] for s in buffer.sessions[sid]["segments"]}
+        self.assertIn("00000000.ts", names)
+        buffer.prune(1200 + 300 + 100)
+        self.assertNotIn("00000000.ts", {s["name"] for s in buffer.sessions[sid]["segments"]})
+
     def test_low_disk_pauses(self):
         buffer, _ = self.session(free=4_000_000_000)
         self.assertFalse(buffer.has_room(1200))

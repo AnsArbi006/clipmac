@@ -27,3 +27,20 @@ jobs:
         run: python -m clipmac.dev --data-dir "$RUNNER_TEMP/clipmac-demo" --seed-only
       - name: Publication check
         run: python scripts/check_publication.py
+  windows-app:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: choco install ffmpeg -y --no-progress
+      - run: python -m pip install Pillow
+      - run: python -m unittest tests.test_windows_live tests.test_windows_publish tests.test_windows_cut -v
+      - run: node --check clipmac_windows/static/app.js

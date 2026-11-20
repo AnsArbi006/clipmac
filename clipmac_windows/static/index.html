@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClipMac Windows</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header>
+  <h1>ClipMac Windows <span id="mode"></span></h1>
+  <div class="controls">
+    <button id="start" class="primary">Start</button>
+    <button id="stop">Stopp</button>
+  </div>
+</header>
+<main>
+  <section id="streams" class="streams"></section>
+  <section class="bar">
+    <div id="progress" class="progress"></div>
+    <div class="settings">
+      <label>Schwelle <input id="threshold" type="number" min="0" max="100" step="1"></label>
+      <label><input id="upload" type="checkbox"> Automatisch veröffentlichen</label>
+      <label><input id="p-tiktok" type="checkbox"> TikTok</label>
+      <label><input id="p-youtube" type="checkbox"> YouTube</label>
+    </div>
+  </section>
+  <section id="platforms" class="platforms"></section>
+  <h2>Clips</h2>
+  <section id="clips" class="clips"></section>
+  <p id="error" class="error" role="alert"></p>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

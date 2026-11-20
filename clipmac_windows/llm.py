@@ -20,6 +20,16 @@ SYSTEM = (
     "Bei fehlendem Beleg lasse das Kriterium weg.")
 
 
+_CRITERION = {"type": "object", "properties": {"value": {"type": "integer", "enum": [0, 1, 2]},
+                                              "unit": {"type": "integer"}, "quote": {"type": "string"}},
+              "required": ["value", "unit", "quote"]}
+SCHEMA = {"type": "object",
+          "properties": {"first": {"type": "integer"}, "last": {"type": "integer"},
+                         "criteria": {"type": "object",
+                                      "properties": {k: _CRITERION for k in ("hook", "context", "payoff")}}},
+          "required": ["first", "last", "criteria"]}
+
+
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise HTTPError(req.full_url, code, msg, headers, fp)
@@ -30,7 +40,8 @@ def ask_ollama(units, anchor, model, *, url=OLLAMA_URL, timeout=60):
             for i, row in enumerate(units)]
     if len(data) > 70 or sum(len(row["text"]) for row in data) > 7000:
         raise ValueError("Ausschnitt ist für die lokale Analyse zu lang.")
-    body = json.dumps({"model": model, "stream": False, "format": "json",
+    # A JSON schema (Ollama structured outputs) keeps small local models to the expected shape.
+    body = json.dumps({"model": model, "stream": False, "format": SCHEMA,
                        "options": {"temperature": 0, "num_predict": 450, "num_ctx": 8192},
                        "system": SYSTEM,
                        "prompt": json.dumps({"anchor": anchor, "utterances": data}, ensure_ascii=False)})

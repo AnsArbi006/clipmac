@@ -70,12 +70,18 @@ def process(candidate, source, folder, cfg, *, transcribe=whisper_transcribe, as
                                             threshold=cfg["score_threshold"])
         result.update(score=None, eligible=False, reason=result["decision"]["reasons"][0])
         return result
-    _, _, window_units, _ = proposals[0]
-    anchor = units.index(window_units[0]) + proposals[0][3]
+    _, _, window_units, relative_anchor = proposals[0]
     evidence, model_error = {}, None
     try:
-        response = ask(units, anchor, cfg)
-        chosen, evidence = core.validate_analysis(response if isinstance(response, dict) else {}, units, anchor)
+        # The model rates only the pre-selected window; small local models pick ranges poorly.
+        response = ask(window_units, relative_anchor, cfg)
+        response = dict(response) if isinstance(response, dict) else {}
+        first, last = response.get("first"), response.get("last")
+        if (type(first) is not int or type(last) is not int
+                or not 0 <= first <= relative_anchor <= last < len(window_units)
+                or not 20 <= window_units[last]["end"] - window_units[first]["start"] <= 120):
+            response.update(first=0, last=len(window_units) - 1)
+        chosen, evidence = core.validate_analysis(response, window_units, relative_anchor)
         if not evidence:
             chosen = window_units
     except render.Cancelled:

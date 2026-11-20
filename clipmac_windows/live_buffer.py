@@ -19,6 +19,15 @@ SESSION_ID = re.compile(r"[0-9a-f]{32}\Z")
 COVERAGE_SLACK = 0.08
 
 
+def _remove(path):
+    """Delete a segment. Windows refuses while another process holds it open: report False."""
+    try:
+        path.unlink(missing_ok=True)
+        return True
+    except PermissionError:
+        return False
+
+
 class LiveBuffer:
     def __init__(self, root, *, limit=LIMIT_BYTES, free_min=FREE_MIN_BYTES, headroom=HEADROOM_BYTES,
                  disk_usage=shutil.disk_usage):
@@ -193,8 +202,8 @@ class LiveBuffer:
         if not SEGMENT_NAME.fullmatch(name):
             raise RuntimeError("Ungültiger Segmentname im Live-Puffer.")
         path = self.directory(session_id) / name
-        if not path.is_symlink():
-            path.unlink(missing_ok=True)
+        if not path.is_symlink() and not _remove(path):
+            return  # still open by a recorder on Windows: keep it listed and retry on the next prune
         self.sessions[session_id]["segments"].remove(segment)
 
     def bytes_used(self, session_id=None):
@@ -234,11 +243,13 @@ class LiveBuffer:
                 names = {s["name"] for s in segments}
                 for path in directory.glob("*.ts"):
                     if (SEGMENT_NAME.fullmatch(path.name) and path.name not in names and not path.is_symlink()):
-                        path.unlink(missing_ok=True)
-                        changed = True
+                        changed = _remove(path) or changed
                 if key not in keep_sessions and not segments:
                     if directory.is_dir() and not any(directory.iterdir()):
-                        directory.rmdir()
+                        try:
+                            directory.rmdir()
+                        except OSError:
+                            continue
                     del self.sessions[key]
                     changed = True
         if changed:

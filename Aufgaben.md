@@ -32,7 +32,7 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 | CM-008 | P2 | Technische Qualitätsprüfung | M | CM-003 | Offen |
 | CM-009 | P2 | Betrieb, Wiederaufnahme und Diagnose | M | CM-000 | Offen |
 | CM-010 | P2 | Speicherverwaltung und Sicherung | M | CM-003, CM-009 | Offen |
-| CM-012 | P1 | Windows-Live-Highlights mit eigenem Dashboard und Upload | L | CM-000 | Spezifikation aktualisiert |
+| CM-012 | P1 | Windows-Live-Highlights mit eigenem Dashboard und Upload | L | CM-000 | Zur Prüfung |
 
 **Neue Priorität des Betreibers vom 20.11.2026: CM-012 (siehe unten), nach Korrektur des offenen PR #1. CM-001 bleibt im Backlog.**
 
@@ -233,3 +233,6 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 6. Zwei-Stream-Probelauf: CPU/RAM, Pufferverbrauch, Verarbeitungsdauer und Warteschlangenwachstum messen. Speicherlimit, fehlende Segmente und Prozessabsturz testen. Tatsächliche Windows-/Live-/Konto-Abnahme getrennt von Mock-Belegen dokumentieren.
 
 **Lieferung:** Bestehende CM-012-A/B/C-PRs an diese Vorgaben anpassen: A = Windows-Recorder und Chat, B = Schnitt/Eignung, C = eigenes Dashboard und getrennte Windows-Uploader. Nach überprüfbarer Implementierung und lokaler Kontoeinrichtung soll die Windows-App unabhängig vom Mac arbeiten. Keine Installation oder Aktivierung der Live-Überwachung auf dem Mac.
+
+**Umsetzungsstand CM-012 (Windows, Zur Prüfung):** Paket `clipmac_windows` mit eigenem Einstieg `python -m clipmac_windows`, Dashboard auf 127.0.0.1:8765, eigener SQLite-Datei und Datenordner unter `%LOCALAPPDATA%`. A = Recorder/Chat (`live_capture`, `live_chat`, `live_buffer`), B = Schnitt/Eignung (`analysis_core`, `pipeline`, `render`, `scoring`, `llm`), C = Dashboard/Uploader (`engine`, `server`, `static/`, `uploaders`, `queue`). Startanleitung: `docs/WINDOWS.md`. Belegt nur mit synthetischen Streams und simulierten Uploads; echte Twitch-/Konto-/Upload-Abnahme und Zwei-Stream-Lastlauf mit echten Streams stehen aus.
+
