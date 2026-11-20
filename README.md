@@ -96,3 +96,7 @@ Der Veröffentlichungstest prüft Git-Dateiliste und bekannte Geheimnismuster. E
 ## Lizenz und Weiterentwicklung
 
 Eigener Code: MIT, siehe [LICENSE](LICENSE). Fremdcode und Modelle behalten ihre eigenen Bedingungen: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Die Softwarelizenz erteilt keine Rechte zur Veröffentlichung fremder Clips. Keine automatischen Likes, Kommentare oder künstliche Reichweite; Engagement-Aufgaben betreffen Messung und redaktionelle Qualität.
+
+## Windows-Live-App (CM-012)
+
+Eigenständige Windows-Anwendung für Live-Highlights mit eigenem Dashboard und TikTok-/YouTube-Upload: siehe [docs/WINDOWS.md](docs/WINDOWS.md). Demo: `python -m clipmac_windows --demo`.
