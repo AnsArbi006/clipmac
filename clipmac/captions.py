@@ -22,11 +22,12 @@ def safe_ass(text):
 
 
 @lru_cache(maxsize=80)
-def font(size):
+def font(size, font_path=None):
     from PIL import ImageFont
-    if not FONT_PATH.is_file():
+    path = Path(font_path) if font_path is not None else FONT_PATH
+    if not path.is_file():
         raise RuntimeError('Untertitel-Schrift Arial Bold fehlt. Bitte die lokale Schriftinstallation prüfen.')
-    return ImageFont.truetype(str(FONT_PATH), size)
+    return ImageFont.truetype(str(path), size)
 
 
 def groups(transcript):
@@ -60,11 +61,11 @@ def groups(transcript):
     return result
 
 
-def layout(group):
+def layout(group, *, font_path=None):
     """Measure actual font advances, center at most two lines in the safe area."""
     texts = [w['word'].upper() for w in group]
     for size in range(84, 11, -2):
-        f = font(size)
+        f = font(size) if font_path is None else font(size, font_path)
         widths = [float(f.getlength(t)) for t in texts]
         gap = 30
         def width(indices):
@@ -98,7 +99,7 @@ def rounded_box(width, height, radius=15):
             f'l 0 {r} b 0 0 0 0 {r} 0')
 
 
-def write_subtitles(path, transcript):
+def write_subtitles(path, transcript, *, font_path=None):
     events, srt, bounds = [], [], []
     def event(layer,a,b,tags,text):
         if round(b*100) > round(a*100):
@@ -108,7 +109,7 @@ def write_subtitles(path, transcript):
         return f'{ms//3600000:02}:{ms//60000%60:02}:{ms//1000%60:02},{ms%1000:03}'
     for group in groups(transcript):
         a,b = group[0]['start'],group[-1]['end']
-        positions = layout(group)
+        positions = layout(group) if font_path is None else layout(group, font_path=font_path)
         for p in positions:
             pos = rf'\an5\pos({p["x"]:.1f},{p["y"]:.1f})\fs{p["size"]}'
             event(1,a,b,pos+r'\fad(45,35)\fscx97\fscy97\t(0,80,\fscx100\fscy100)',p['text'])
