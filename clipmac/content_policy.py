@@ -33,3 +33,20 @@ def ranked_pool(clips, cfg, limit, now=None):
             selected.append(clip)
             counts[login] = counts.get(login, 0) + 1
     return selected
+
+
+NO_FACECAM = "Keine Facecam im oberen Drittel erkannt – nicht gepostet, zählt nicht als Top-Clip."
+MIN_FACECAM_SHARE = 0.8
+
+
+def facecam_reason(render, cfg):
+    """Fail closed: every posted short needs the streamer camera on top for most of its length."""
+    if not cfg.get("facecam", True):
+        return ""
+    timeline = (render or {}).get("timeline") or []
+    total = sum(max(0.0, float(s["end"]) - float(s["start"])) for s in timeline)
+    split = sum(max(0.0, float(s["end"]) - float(s["start"])) for s in timeline
+                if s.get("mode") == "split" and s.get("face"))
+    if total <= 0 or split / total < MIN_FACECAM_SHARE:
+        return NO_FACECAM
+    return ""

@@ -18,7 +18,7 @@ class PublishingTests(unittest.TestCase):
         self.engine.active.set()
         for n in range(4):
             self.store.add({"id": f"test{n}", "title": "Test", "broadcaster_name": "Test"})
-            self.store.update(f"test{n}", "ready", result={"metadata": {"title": "Test"}})
+            self.store.update(f"test{n}", "ready", result={"metadata": {"title": "Test"}, "render": {"timeline": [{"start": 0, "end": 30, "mode": "split", "face": {"x": 0}}]}})
         self.cfg = {**DEFAULTS, "channel_id": "test-channel", "channel_title": "Testkanal"}
         self.patches = [patch("clipmac.engine.settings", return_value=self.cfg),
                         patch("clipmac.engine.RUNTIME", self.root),

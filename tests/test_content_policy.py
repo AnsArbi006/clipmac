@@ -89,5 +89,48 @@ class ContentPolicyTests(unittest.TestCase):
                 upload.assert_not_called()
             self.assertEqual(store.get('fresh')['status'], 'policy_blocked')
 
+
+    def render(self, *sections):
+        return {'timeline': [{'start': a, 'end': b, 'mode': m, 'face': {'x': 0} if m == 'split' else None}
+                             for a, b, m in sections]}
+
+    def test_facecam_required_for_posting(self):
+        from clipmac.content_policy import NO_FACECAM, facecam_reason
+        self.assertEqual(facecam_reason(self.render((0, 30, 'split')), self.cfg), '')
+        self.assertEqual(facecam_reason(self.render((0, 27, 'split'), (27, 30, 'portrait')), self.cfg), '')
+        self.assertEqual(facecam_reason(self.render((0, 30, 'portrait')), self.cfg), NO_FACECAM)   # nur Gameplay
+        self.assertEqual(facecam_reason(self.render((0, 15, 'split'), (15, 30, 'portrait')), self.cfg), NO_FACECAM)
+        self.assertEqual(facecam_reason(None, self.cfg), NO_FACECAM)                               # fail closed
+        self.assertEqual(facecam_reason(self.render((0, 30, 'portrait')), {**self.cfg, 'facecam': False}), '')
+
+    def test_gameplay_only_clip_blocked_and_not_counted(self):
+        from unittest.mock import MagicMock
+        from clipmac.content_policy import NO_FACECAM
+        cfg = {**self.cfg, 'top_per_streamer': 1, 'selection_scope': 'per_streamer'}
+        clips = [self.clip('gameplay', 40, duration=20, broadcaster_name='Papaplatte'),
+                 self.clip('next', 30, duration=20, broadcaster_name='Papaplatte')]
+        client = MagicMock()
+        client.resolve_broadcasters.return_value = {'papaplatte': 'one', 'trymacs': 'two'}
+        client.get_clips_for_broadcaster.side_effect = [clips, [], clips, []]
+        client._helix_get.return_value = {'data': [{'id': '1867279146', 'name': 'Grand Theft Auto VI'}]}
+        with tempfile.TemporaryDirectory() as temp:
+            store = Store(Path(temp)/'queue.db'); engine = Engine(store); engine.active.set()
+            env = (patch('clipmac.engine.settings', return_value=cfg),
+                   patch('clipmac.engine.secrets', return_value={'client_id': 'test', 'client_secret': 'test'}),
+                   patch('twitch_api.TwitchApiClient', return_value=client))
+            with env[0], env[1], env[2]:
+                engine.discover()
+                self.assertEqual([r['id'] for r in store.rows()], ['gameplay'])
+                result = {'metadata': {'title': 't'}, 'render': self.render((0, 20, 'portrait'))}
+                with patch('clipmac.engine.media.download'), patch('clipmac.engine.media.process', return_value=result):
+                    engine.process_one(store.get('gameplay'))
+                self.assertEqual(store.get('gameplay')['status'], 'policy_blocked')
+                self.assertEqual(store.get('gameplay')['error'], NO_FACECAM)
+                engine.discover()                       # the next clip moves up into the top 1
+            self.assertEqual(store.get('next')['status'], 'queued')
+            with patch('clipmac.engine.settings', return_value=cfg), \
+                 patch('clipmac.engine.publisher.service_for_channel') as auth:
+                engine.publish_one()
+                auth.assert_not_called()                # nothing ready -> nothing posted
 if __name__ == '__main__':
     unittest.main()

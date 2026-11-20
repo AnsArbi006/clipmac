@@ -101,7 +101,9 @@ class Engine:
         broadcasters = client.resolve_broadcasters(cfg["streamers"])
         end = datetime.now(timezone.utc)
         start = end - timedelta(hours=cfg["lookback_hours"])
-        from .content_policy import ranked_pool
+        from .content_policy import NO_FACECAM, ranked_pool
+        # Clips without a facecam do not count toward the top N; the next clip moves up.
+        no_camera = {j["id"] for j in self.store.rows("policy_blocked") if j["error"] == NO_FACECAM}
         all_clips, summary = [], {}
         for login in cfg["streamers"]:
             if not self.active.is_set():
@@ -112,7 +114,7 @@ class Engine:
             clips = client.get_clips_for_broadcaster(broadcasters[login], start, end)
             for clip in clips:
                 clip["streamer_login"] = login
-            all_clips.extend(clips)
+            all_clips.extend(c for c in clips if c["id"] not in no_camera)
             summary[login] = {"found": len(clips)}
         # Rank only matching categories, across channels when global is selected.
         # Keep already-known clips in this top pool so repeated polls do not drain
@@ -139,12 +141,14 @@ class Engine:
                 "scope": scope, "channels": summary, "added": added}
 
     def hold_ineligible(self, cfg=None):
-        from .content_policy import rejection_reason
+        from .content_policy import facecam_reason, rejection_reason
         cfg = cfg or settings()
         for job in self.store.rows():
             if job["status"] not in {"queued", "ready", "failed"}:
                 continue
             reason = rejection_reason(job["clip"], cfg)
+            if not reason and job["status"] == "ready":
+                reason = facecam_reason((job["result"] or {}).get("render"), cfg)
             if reason and self.store.transition(job["id"], job["status"], "policy_blocked"):
                 self.store.update(job["id"], "policy_blocked", error=reason)
 
@@ -166,6 +170,12 @@ class Engine:
             source = media.download(clip, directory)
             self.store.update(job["id"], "editing")
             result = media.process(source, directory, clip, settings(), self.store.log)
+            from .content_policy import facecam_reason
+            reason = facecam_reason(result.get("render"), settings())
+            if reason:
+                self.store.update(job["id"], "policy_blocked", result=result, error=reason)
+                self.store.log(f"{clip['broadcaster_name']}: {reason}")
+                return
             self.store.update(job["id"], "ready", result=result)
             self.store.log(f"Short fertig: {result['metadata']['title']}")
         except Exception as exc:
@@ -208,8 +218,9 @@ class Engine:
             service = publisher.service_for_channel(cfg["channel_id"])
         if not self.active.is_set():
             return
-        from .content_policy import rejection_reason
-        reason = rejection_reason(job["clip"], settings())
+        from .content_policy import facecam_reason, rejection_reason
+        reason = (rejection_reason(job["clip"], settings())
+                  or facecam_reason((job["result"] or {}).get("render"), settings()))
         if reason:
             if self.store.transition(job["id"], "ready", "policy_blocked"):
                 self.store.update(job["id"], "policy_blocked", error=reason)
