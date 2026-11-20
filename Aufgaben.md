@@ -176,7 +176,7 @@ Aufwand ist relativ: S = klar begrenzte Änderung, M = mehrere Komponenten, L = 
 
 ## CM-012 – Live-Highlights, Viral Score und sinnvolle Langvideo-Schnitte
 
-**Status:** Offen. **Priorität:** P1, neuer ausdrücklicher Nutzerauftrag vom 20.11.2026. **Aufwand:** L; in die unten definierten Teil-PRs aufteilen. Erst den offenen Schnittfehler in PR #1 korrigieren. CM-004/005 liefern verwandte Anforderungen und werden durch diese Umsetzung ergänzt, nicht doppelt gebaut. CM-003-Fassungszuordnung für neue Ergebnisse mit berücksichtigen.
+**Status:** Zur Prüfung. **Priorität:** P1, neuer ausdrücklicher Nutzerauftrag vom 20.11.2026. **Aufwand:** L; in die unten definierten Teil-PRs aufteilen. Erst den offenen Schnittfehler in PR #1 korrigieren. CM-004/005 liefern verwandte Anforderungen und werden durch diese Umsetzung ergänzt, nicht doppelt gebaut. CM-003-Fassungszuordnung für neue Ergebnisse mit berücksichtigen.
 
 ### Auftrag an den zweiten Account
 

@@ -41,6 +41,9 @@ def seed(with_video=False):
             for age, views, likes in ((3660, 120, 4), (7260, 290, 9)):
                 store.record_performance(job, {"availability": "public", "views": views, "likes": likes, "comments": 2},
                                          now-9000+age, now-9000)
+    if with_video:
+        from .highlight_demo import seed_preview
+        seed_preview(RUNTIME)
 
 
 def main():

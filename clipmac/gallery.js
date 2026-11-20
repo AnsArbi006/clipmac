@@ -70,12 +70,14 @@ function videoCard(job,s){
   const held=hasOpenReport(s,job.id)&&['queued','downloading','editing','ready','failed'].includes(job.status);
   thumbnail.append(el('span',held?'Problem gemeldet':labels[job.status]||job.status,'thumbnail-status status-'+(held?'failed':job.status)));
   const play=el('span',undefined,'thumbnail-play');play.innerHTML=playSvg;thumbnail.append(play);
-  thumbnail.append(el('span',synthetic?'Synthetische Vorschau':'Twitch-Vorschau','thumbnail-source'));
+  const liveHighlight = job.clip.source_type === 'live_highlight';
+  thumbnail.append(el('span',synthetic?'Synthetische Vorschau':liveHighlight?'Live-Highlight':'Twitch-Vorschau','thumbnail-source'));
   const seconds=Math.round(job.clip.duration||0);thumbnail.append(el('span',`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`,'thumbnail-duration'));
   row.append(thumbnail);
   const body=el('div',undefined,'video-card-body');
   const byline=el('div',undefined,'creator-line');const avatar=el('span',(job.clip.broadcaster_name||'?').slice(0,1).toUpperCase(),'creator-avatar');
-  byline.append(avatar,el('span',job.clip.broadcaster_name||'Streamer'),el('span',Number(job.clip.view_count||0).toLocaleString('de-DE')+' Twitch-Aufrufe','source-views'));body.append(byline);
+  const sourceLabel = liveHighlight ? (job.clip.vod_alignment === 'verified' ? 'Live · VOD zugeordnet' : 'Live · VOD-Zuordnung offen') : Number(job.clip.view_count||0).toLocaleString('de-DE')+' Twitch-Aufrufe';
+  byline.append(avatar,el('span',job.clip.broadcaster_name||'Streamer'),el('span',sourceLabel,'source-views'));body.append(byline);
   const heading=el('h3',title,'job-title');heading.title=title;body.append(heading);
   if(job.error){const details=el('details',undefined,'job-error');details.append(el('summary','Hinweis zur Verarbeitung'),el('small',job.error));body.append(details)}
   renderLearning(body,job,s.learning||{});

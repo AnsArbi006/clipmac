@@ -130,7 +130,7 @@ assert with_error
                 self.assertTrue(live['development'])
                 self.assertFalse(any(row['enabled'] for row in live['channels']))
                 for endpoint in ('start','twitch','youtube-client','youtube-connect','tiktok/start','tiktok/connect','tiktok/check',
-                                 'live/start','live/chat-credentials','highlights/analyze-live'):
+                                 'live/start','live/chat-credentials','highlights/analyze-live','highlights/promote'):
                     request = Request(base+'/api/'+endpoint, data=b'{}', headers={'Content-Type':'application/json','X-ClipMac-Token':token})
                     with self.assertRaises(HTTPError) as ctx: open_local(request, timeout=3)
                     self.assertEqual(ctx.exception.code,400)
@@ -144,6 +144,7 @@ assert with_error
                     highlights = json.load(response)
                 self.assertTrue(highlights['development'])
                 self.assertEqual(highlights['jobs'], [])
+                self.assertEqual(highlights['threshold'], 60)
                 with open_local(base+'/api/learning/export', timeout=3) as response: data = json.load(response)
                 self.assertFalse(data['model_trained'])
                 self.assertFalse((Path(temp)/'credentials').exists())

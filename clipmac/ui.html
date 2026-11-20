@@ -34,7 +34,11 @@ dialog{color:var(--text);background:var(--surface);border:1px solid var(--line);
   <p id="highlight-error" role="status"></p>
   <div id="highlight-jobs" class="highlights-grid"></div>
   <h3>Schnittvorschläge</h3>
-  <div id="highlight-candidates" class="highlights-grid"></div>
+  <form id="highlight-threshold" class="highlights-form">
+    <label>Empfehlung ab Punkten<input name="value" type="number" min="0" max="100" step="1" value="60" required></label>
+    <button type="submit">Schwelle speichern</button>
+  </form>
+  <div id="highlight-candidates"></div>
 </section>
 <section class="stats"><div class="stat"><b>7 Stunden</b><span>ZEITFENSTER</span></div><div class="stat"><b id="count">0</b><span>CLIPS IN ARBEIT</span></div><div class="stat"><b id="ready">0</b><span>BEREIT ZUM UPLOAD</span></div><div class="stat"><b id="spacing">Ohne Wartezeit</b><span>UPLOADPLAN</span></div></section>
 <section class="panel tiktok-panel" aria-labelledby="tiktok-heading">
@@ -71,4 +75,4 @@ $('status').textContent=(s.active?'Automatik läuft · '+(s.publish_stage||s.sta
 $('rated-count').textContent=s.learning?.rated_count||0;renderGallery(s);
 const events=$('events');events.replaceChildren();for(const e of s.events)events.append(el('div',new Date(e.at*1000).toLocaleTimeString('de-DE')+' · '+e.message,'event'))}
 
-</script><script src="/learning-ui.js"></script><script src="/gallery.js"></script><script src="/feedback-ui.js"></script><script src="/tiktok-ui.js"></script><script src="/live-ui.js"></script><script src="/highlight-ui.js"></script></body></html>
+</script><script src="/learning-ui.js"></script><script src="/gallery.js"></script><script src="/feedback-ui.js"></script><script src="/tiktok-ui.js"></script><script src="/live-ui.js"></script><script src="/highlight-review-ui.js"></script><script src="/highlight-ui.js"></script></body></html>

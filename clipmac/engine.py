@@ -209,7 +209,11 @@ class Engine:
         if not self.active.is_set():
             return
         from .content_policy import rejection_reason
-        reason = rejection_reason(job["clip"], settings())
+        latest = settings()
+        reason = rejection_reason(job["clip"], latest)
+        if not reason and job["clip"].get("source_type") == "live_highlight":
+            from .highlight_review import queued_highlight_rejection
+            reason = queued_highlight_rejection(job, self.store, latest)
         if reason:
             if self.store.transition(job["id"], "ready", "policy_blocked"):
                 self.store.update(job["id"], "policy_blocked", error=reason)

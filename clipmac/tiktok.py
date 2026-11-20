@@ -98,10 +98,17 @@ def clip_payload(clip_id):
         raise ValueError("Clip nicht fertig, negativ bewertet oder durch Fehlermeldung gesperrt.")
     from .state import settings
     from .content_policy import rejection_reason
-    reason = rejection_reason(json.loads(row[2]), settings())
+    clip = json.loads(row[2])
+    cfg = settings()
+    reason = rejection_reason(clip, cfg)
+    result = json.loads(row[0])
+    if not reason and clip.get("source_type") == "live_highlight":
+        from .highlight_review import highlight_rejection_in_db
+        with sqlite3.connect(f"file:{RUNTIME / 'queue.sqlite'}?mode=ro", uri=True) as db:
+            reason = highlight_rejection_in_db({"id": clip_id, "clip": clip, "result": result}, db, cfg,
+                                               runtime=RUNTIME)
     if reason:
         raise ValueError(reason)
-    result = json.loads(row[0])
     file = Path(result["file"]).resolve()
     expected = (RUNTIME / "clips" / clip_id / "final.mp4").resolve()
     if file != expected or not file.is_file():

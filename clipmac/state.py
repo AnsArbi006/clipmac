@@ -23,6 +23,7 @@ DEFAULTS = {
     "language": "de",
     "whisper_model": "small",
     "ollama_model": "qwen2.5:3b",
+    "highlight_recommendation_threshold": 60,
     "silence_db": -38,
     "silence_min_seconds": 0.8,
     "silence_padding_seconds": 0.15,
@@ -58,7 +59,7 @@ def settings():
 
 def save_settings(changes):
     result = settings()
-    permitted = {"streamers", "top_per_streamer", "publish_interval_minutes", "facecam", "facecam_share", "publish_enabled", "selection_scope", "publish_batch_size", "publish_batch_interval_minutes"}
+    permitted = {"streamers", "top_per_streamer", "publish_interval_minutes", "facecam", "facecam_share", "publish_enabled", "selection_scope", "publish_batch_size", "publish_batch_interval_minutes", "highlight_recommendation_threshold"}
     for key in permitted & changes.keys():
         result[key] = changes[key]
     if not isinstance(result["streamers"], list) or not 1 <= len(result["streamers"]) <= 30:
@@ -83,6 +84,9 @@ def save_settings(changes):
             raise ValueError(f"{key}: ungültiger Wert")
     if result["facecam_share"] not in (1 / 3, 0.5):
         raise ValueError("Facecam-Anteil muss ein Drittel oder die Hälfte sein.")
+    threshold = result["highlight_recommendation_threshold"]
+    if type(threshold) is not int or not 0 <= threshold <= 100:
+        raise ValueError("Empfehlungsschwelle als ganze Zahl von 0 bis 100 angeben.")
     atomic_json(RUNTIME / "settings.json", result)
     return result
 

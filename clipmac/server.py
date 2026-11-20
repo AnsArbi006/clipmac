@@ -9,11 +9,12 @@ from socketserver import TCPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .state import ROOT, RUNTIME, atomic_json, settings
+from .state import ROOT, RUNTIME, atomic_json, save_settings, settings
 from .engine import Engine
 from . import publisher
 from .live import LiveHighlights
 from .long_highlights import LongHighlights
+from .highlight_web import HighlightDashboard
 from .tiktok_service import TikTokController
 from .environment import DEVELOPMENT, require_live
 
@@ -38,6 +39,7 @@ def serve(port=8768):
     tiktok = TikTokController(engine.store)
     live = LiveHighlights(RUNTIME / "live-highlights")
     highlights = LongHighlights(RUNTIME / "highlight-analysis")
+    highlight_dashboard = HighlightDashboard(highlights, engine.store)
     csrf = random_secrets.token_urlsafe(32)
     auth_running = threading.Event()
     allowed_hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
@@ -77,7 +79,7 @@ def serve(port=8768):
             if path == "/feedback-ui.js":
                 return self.send((ROOT / "clipmac" / "feedback-ui.js").read_bytes(), content_type="text/javascript; charset=utf-8")
             if path in ("/learning-ui.js", "/learning.css", "/gallery.js", "/gallery.css", "/tiktok-ui.js", "/tiktok.css",
-                        "/live-ui.js", "/highlights.css", "/highlight-ui.js"):
+                        "/live-ui.js", "/highlights.css", "/highlight-ui.js", "/highlight-review-ui.js"):
                 mime = "text/javascript; charset=utf-8" if path.endswith(".js") else "text/css; charset=utf-8"
                 return self.send((ROOT / "clipmac" / path[1:]).read_bytes(), content_type=mime)
             if path == "/api/learning/export":
@@ -95,7 +97,7 @@ def serve(port=8768):
             if path == "/api/live/state":
                 return self.send({**live.snapshot(settings()), "development": DEVELOPMENT})
             if path == "/api/highlights/state":
-                return self.send({**highlights.snapshot(), "development": DEVELOPMENT})
+                return self.send(highlight_dashboard.state(settings()))
             if path.startswith("/highlight-video/"):
                 try:
                     return self.video(highlights.preview(path.removeprefix("/highlight-video/")))
@@ -190,6 +192,20 @@ def serve(port=8768):
                     highlights.cancel(body.get("id"))
                 elif path == "/api/highlights/render":
                     highlights.render(body.get("id"))
+                elif path == "/api/highlights/rating":
+                    highlight_dashboard.rate(body)
+                elif path == "/api/highlights/report":
+                    return self.send({"ok": True, "report_id": highlight_dashboard.report(body)})
+                elif path == "/api/highlights/report-withdraw":
+                    highlight_dashboard.withdraw(body)
+                elif path == "/api/highlights/promote":
+                    require_live("Highlight in die Paketwarteschlange übernehmen")
+                    clip_id = highlight_dashboard.promote(body, settings())
+                    return self.send({"ok": True, "clip_id": clip_id})
+                elif path == "/api/highlights/threshold":
+                    if auth_running.is_set():
+                        raise ValueError("Bitte die laufende Google-Anmeldung abschließen.")
+                    save_settings({"highlight_recommendation_threshold": body.get("value")})
                 elif path == "/api/live/start":
                     require_live("Live-Aufnahme und Twitch-Chat")
                     live.start(body.get("channel"), settings())
@@ -221,7 +237,6 @@ def serve(port=8768):
                         raise ValueError("Bitte zuerst die Automatik starten.")
                     engine.scan_requested.set()
                 elif path == "/api/settings":
-                    from .state import save_settings
                     if auth_running.is_set():
                         raise ValueError("Bitte die laufende Google-Anmeldung abschließen.")
                     save_settings(body)

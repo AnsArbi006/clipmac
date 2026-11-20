@@ -3,6 +3,7 @@
   const candidates = document.getElementById('highlight-candidates');
   const status = document.getElementById('highlight-error');
   const form = document.getElementById('highlight-import');
+  const threshold = document.getElementById('highlight-threshold');
   const phases = {
     queued: 'Wartet', running: 'Analysiert', analyzing: 'Analysiert',
     downloading: 'Lädt Quelle', rendering: 'Rendert Vorschau', complete: 'Fertig',
@@ -18,6 +19,7 @@
   let jobsKey = '';
   let candidateKey = '';
   let pending = false;
+  let thresholdValue;
 
   async function action(path, payload) {
     try {
@@ -70,10 +72,15 @@
     const key = JSON.stringify(rows);
     if (key === candidateKey) return;
     candidateKey = key;
-    const cards = rows.map(row => {
+    const groups = new Map([['live', []], ['text', []]]);
+    for (const row of rows) {
       const card = el('article', undefined, 'highlights-card');
       const label = [sourceLabels[row.kind], row.channel].filter(Boolean).join(' · ');
-      card.append(el('strong', label), el('p', `${timestamp(row.start)} – ${timestamp(row.end)}`));
+      const origin = row.live_context?.start;
+      const span = row.kind === 'live' && Number.isFinite(origin)
+        ? `${new Date((origin + row.start) * 1000).toLocaleTimeString('de-DE')} – ${new Date((origin + row.end) * 1000).toLocaleTimeString('de-DE')}`
+        : `${timestamp(row.start)} – ${timestamp(row.end)}`;
+      card.append(el('strong', label), el('p', span));
       for (const [key, name] of [['hook', 'Einstieg'], ['context', 'Kontext'], ['payoff', 'Höhepunkt und Ende']]) {
         const evidence = row.evidence?.[key];
         if (evidence?.quote) card.append(el('p', `${name}: „${evidence.quote}“`));
@@ -90,9 +97,19 @@
       } else {
         card.append(button('Vorschau rendern', () => action('render', {id: row.id})));
       }
-      return card;
-    });
-    candidates.replaceChildren(...(cards.length ? cards : [el('p', 'Bisher sind keine Schnittvorschläge vorhanden.')]));
+      window.clipmacHighlightReview.render(card, row, action);
+      groups.get(row.score?.mode === 'live' ? 'live' : 'text').push(card);
+    }
+    const sections = [];
+    for (const [mode, cards] of groups) {
+      if (!cards.length) continue;
+      const section = el('section');
+      const grid = el('div', undefined, 'highlights-grid');
+      grid.append(...cards);
+      section.append(el('h4', mode === 'live' ? 'Live mit Chat' : 'Ohne Chat'), grid);
+      sections.push(section);
+    }
+    candidates.replaceChildren(...(sections.length ? sections : [el('p', 'Bisher sind keine Schnittvorschläge vorhanden.')]));
   }
 
   async function refreshHighlights() {
@@ -103,6 +120,10 @@
       if (!response.ok) throw new Error('Analyse-Status ist momentan nicht erreichbar.');
       const data = await response.json();
       form.elements.kind.options[1].disabled = data.development;
+      if (thresholdValue === undefined || (thresholdValue !== data.threshold && document.activeElement !== threshold.elements.value)) {
+        thresholdValue = data.threshold;
+        threshold.elements.value.value = String(data.threshold);
+      }
       renderJobs(data.jobs);
       renderCandidates(data.candidates);
     } catch (error) {
@@ -117,6 +138,10 @@
     event.preventDefault();
     const payload = Object.fromEntries(new FormData(form));
     if (await action('start', payload)) form.elements.source.value = '';
+  };
+  threshold.onsubmit = async event => {
+    event.preventDefault();
+    await action('threshold', {value: threshold.elements.value.valueAsNumber});
   };
   refreshHighlights();
   setInterval(refreshHighlights, 3000);
