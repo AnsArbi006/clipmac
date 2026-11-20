@@ -12,7 +12,7 @@ class HighlightReviewTests(unittest.TestCase):
     def setUp(self):
         work = tempfile.TemporaryDirectory()
         self.addCleanup(work.cleanup)
-        self.runtime = Path(work.name)
+        self.runtime = Path(work.name).resolve()
         self.store = Store(self.runtime / "queue.sqlite")
         self.reviews = HighlightReviews(self.store, runtime=self.runtime)
         self.now = 1_800_000_000
