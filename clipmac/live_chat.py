@@ -1,12 +1,16 @@
 """Read-only Twitch IRC input and bounded chat-window statistics."""
 
-from collections import Counter, deque
+from collections import Counter, OrderedDict, deque
 from dataclasses import dataclass, fields
+import hashlib
+from http.client import HTTPSConnection, HTTPException
+import json
 import math
 import re
 import socket
 import ssl
 from statistics import median
+import threading
 import time
 
 from .environment import require_live
@@ -120,6 +124,62 @@ def irc_message(line, channel):
     return user, int(stamp) / 1000 if stamp.isascii() and stamp.isdigit() and len(stamp) <= 16 else None
 
 
+def _read_token_validation(login, token):
+    require_live("Twitch-Chat-Token prüfen")
+    connection = HTTPSConnection("id.twitch.tv", timeout=5)
+    try:
+        connection.request("GET", "/oauth2/validate", headers={"Authorization": f"OAuth {token}"})
+        response = connection.getresponse()
+        if response.status == 401:
+            raise PermissionError("Twitch-Chat-Token ist ungültig. Bitte erneuern.")
+        if response.status != 200:
+            raise ConnectionError("Twitch-Tokenprüfung nicht erreichbar.")
+        data = json.loads(response.read(16_385))
+        expires_in, scopes = data.get("expires_in"), data.get("scopes")
+        if (data.get("login") != login or not isinstance(scopes, list) or "chat:read" not in scopes
+                or type(expires_in) is not int or expires_in <= 0):
+            raise PermissionError("Twitch-Login oder Berechtigung chat:read prüfen.")
+        return expires_in
+    except (PermissionError, ConnectionError):
+        raise
+    except (OSError, HTTPException, ValueError, AttributeError):
+        raise ConnectionError("Twitch-Tokenprüfung nicht erreichbar.") from None
+    finally:
+        connection.close()
+
+
+class TokenValidation:
+    """Share validation and revocation across active IRC connections."""
+
+    def __init__(self, request=_read_token_validation, clock=time.monotonic):
+        self.request = request
+        self.clock = clock
+        self.results = OrderedDict()
+        self.lock = threading.Lock()
+
+    def check(self, login, token, key):
+        with self.lock:
+            now = self.clock()
+            next_check, error = self.results.get(key, (float("-inf"), None))
+            if next_check <= now:
+                try:
+                    remaining = self.request(login, token)
+                    next_check, error = now + min(3600, remaining), None
+                except PermissionError:
+                    next_check, error = now + 60, "Twitch-Chat-Token oder Berechtigung chat:read prüfen."
+                except ConnectionError:
+                    next_check, error = now + 5, "Twitch-Tokenprüfung nicht erreichbar."
+                self.results[key] = (next_check, error)
+            self.results.move_to_end(key)
+            while len(self.results) > 4:
+                self.results.popitem(last=False)
+            if error:
+                raise ConnectionError(error)
+
+
+TOKEN_VALIDATION = TokenValidation()
+
+
 class ChatConnection:
     host = "irc.chat.twitch.tv"
 
@@ -128,6 +188,9 @@ class ChatConnection:
         if not LOGIN.fullmatch(login) or not LOGIN.fullmatch(channel) or not re.fullmatch(r"[A-Za-z0-9_\-]{8,256}", token):
             raise ValueError("Bitte Twitch-Chat-Login und Benutzer-Token mit chat:read prüfen.")
         self.channel = channel
+        self.login, self.token = login, token
+        self.validation_key = (login, hashlib.sha256(token.encode("ascii")).digest())
+        TOKEN_VALIDATION.check(self.login, self.token, self.validation_key)
         self.socket = None
         self.buffer = b""
         self.joined = False
@@ -148,9 +211,11 @@ class ChatConnection:
         if self.socket:
             self.socket.close()
             self.socket = None
+        self.token = ""
 
     def read(self):
         """Return only IDs and timestamps for detector use. Drop all message text."""
+        TOKEN_VALIDATION.check(self.login, self.token, self.validation_key)
         try:
             data = self.socket.recv(8192)
         except (socket.timeout, ssl.SSLWantReadError):

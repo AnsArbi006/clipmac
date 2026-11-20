@@ -1,16 +1,17 @@
 import csv
+import json
 from pathlib import Path
 import tempfile
 import threading
 import time
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from clipmac.live import LiveHighlights
 from clipmac.live_buffer import LiveBuffer
 from clipmac.live_capture import export_segments
-from clipmac.live_chat import SpikeConfig, SpikeDetector, irc_message
+from clipmac.live_chat import SpikeConfig, SpikeDetector, TokenValidation, _read_token_validation, irc_message
 from clipmac.media import binary, probe, run
 
 
@@ -66,6 +67,53 @@ class ChatSpikeTests(unittest.TestCase):
         for settings in ({"window_seconds": 0}, {"baseline_seconds": 24}, {"unexpected": 8}, {"rate_multiple": True}):
             with self.assertRaises(ValueError):
                 SpikeConfig.from_settings({"live_spike": settings})
+
+
+class ChatOAuthTests(unittest.TestCase):
+    def test_validate_once_then_propagate_revocation_to_other_connections(self):
+        now = [0]
+        request = Mock(side_effect=[7200, PermissionError])
+        validation = TokenValidation(request=request, clock=lambda: now[0])
+        for at in (0, 1, 3599):
+            now[0] = at
+            validation.check("chatlogin", "fixture", "key")
+        request.assert_called_once_with("chatlogin", "fixture")
+        now[0] = 3600
+        for _ in range(2):
+            with self.assertRaisesRegex(ConnectionError, "chat:read"):
+                validation.check("chatlogin", "fixture", "key")
+        self.assertEqual(request.call_count, 2)
+
+    def test_expiry_before_hour_is_checked(self):
+        now = [0]
+        request = Mock(return_value=100)
+        validation = TokenValidation(request=request, clock=lambda: now[0])
+        validation.check("chatlogin", "fixture", "key")
+        now[0] = 100
+        validation.check("chatlogin", "fixture", "key")
+        self.assertEqual(request.call_count, 2)
+
+    def test_validate_endpoint_requires_matching_login_and_read_scope(self):
+        with patch("clipmac.live_chat.HTTPSConnection") as https:
+            conn = https.return_value
+            response = conn.getresponse.return_value
+            response.status = 200
+            accepted = {"login": "chatlogin", "scopes": ["chat:read"], "expires_in": 600}
+            response.read.return_value = json.dumps(accepted).encode()
+            self.assertEqual(_read_token_validation("chatlogin", "fixture"), 600)
+            https.assert_called_once_with("id.twitch.tv", timeout=5)
+            conn.request.assert_called_once_with("GET", "/oauth2/validate", headers={"Authorization": "OAuth fixture"})
+            for change in ({"scopes": ["chat:edit"]}, {"login": "otherlogin"}, {"expires_in": 0}):
+                response.read.return_value = json.dumps({**accepted, **change}).encode()
+                with self.assertRaises(PermissionError):
+                    _read_token_validation("chatlogin", "fixture")
+            response.status = 401
+            with self.assertRaises(PermissionError):
+                _read_token_validation("chatlogin", "fixture")
+            response.status = 503
+            with self.assertRaises(ConnectionError):
+                _read_token_validation("chatlogin", "fixture")
+            self.assertEqual(conn.close.call_count, 6)
 
 
 class BufferTests(unittest.TestCase):

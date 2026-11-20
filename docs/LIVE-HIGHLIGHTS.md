@@ -7,13 +7,15 @@
 3. Über die [offizielle Twitch-Autorisierung](https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/) einen Benutzer-Token für das eigene Twitch-Konto mit `chat:read` beziehen. Twitch dokumentiert Lesen und Senden als [getrennte IRC-Berechtigungen](https://dev.twitch.tv/docs/authentication/scopes/#irc-chat-scopes). Unter **Live-Highlights → Twitch-Chat verbinden** den Konto-Login und den Lese-Token eingeben. ClipMac speichert ihn lokal unter `credentials/twitch_chat.json` mit Dateimodus `0600`.
 4. Bei einem Kanal **Aufnahme starten** wählen. Der aktive ClipMac-Prozess beobachtet den Stream. Der Kanalstatus zeigt Wartezeit, Aufwärmphase, Pufferauslastung und Fehler an. **Stoppen** beendet die Verarbeitung für den Kanal. Nach einem Neustart müssen die Kanäle erneut gestartet werden.
 
-ClipMac liest den Chat über [Twitch IRC mit TLS](https://dev.twitch.tv/docs/chat/irc/). Bei einem Verbindungsabbruch muss die Chat-Baseline erneut aufwärmen. Bei abgelaufenem oder widerrufenem Token einen neuen Lese-Token lokal speichern und den Kanal neu starten. Gespeicherte Kandidaten enthalten Chat-Zählwerte. Chatnachrichten und Benutzerkennungen dienen der flüchtigen Auswertung im Arbeitsspeicher.
+ClipMac liest den Chat über [Twitch IRC mit TLS](https://dev.twitch.tv/docs/chat/irc/). Vor dem Verbindungsaufbau und spätestens stündlich prüft ClipMac den Token mit [Twitchs Validierungsendpunkt](https://dev.twitch.tv/docs/authentication/validate-tokens/). Bei einem Verbindungsabbruch muss die Chat-Baseline erneut aufwärmen. Bei abgelaufenem oder widerrufenem Token einen neuen Lese-Token lokal speichern und den Kanal neu starten. Gespeicherte Kandidaten enthalten Chat-Zählwerte. Chatnachrichten und Benutzerkennungen dienen der flüchtigen Auswertung im Arbeitsspeicher.
 
 ## Puffer und Schnittfenster
 
 Bis zu zwei Recorder laufen gleichzeitig. Der Ringspeicher arbeitet mit ungefähr fünfsekündigen Segmenten, deren tatsächliche Zeitgrenzen von der Quelle abhängen. Er hält etwa fünf Minuten pro Kanal und ist insgesamt auf 5 GB begrenzt. Bei knappem Datenträger pausiert die Aufnahme. Kandidaten reservieren benötigte Segmente bis zum Export. Bei fehlender Pufferabdeckung oder unklarer Kategorie erscheint ein Prüfhinweis.
 
 Die Spike-Baseline umfasst 180 Sekunden in 10-Sekunden-Fenstern. ClipMac berücksichtigt wiederholte Nachrichten eines Teilnehmers begrenzt und wertet die Teilnehmerbreite mit aus. Der aktuelle Benutzer-Token und die Schwellen gelten ab dem nächsten Start pro Kanal. Der anfängliche Chat-Reaktionsversatz beträgt sechs Sekunden. Das Schnittfenster enthält bis zu 30 Sekunden Vor- und Nachlauf des korrigierten Triggers. Bei realen Streams sollte der Versatz mit einem bekannten Ereignis am Ziel-Mac kalibriert werden.
+
+Bei gestoppten Aufnahmen können `live_spike` und `live_chat_delay_seconds` in der lokalen `settings.json` angepasst werden. Die Standards für `live_spike` sind `window_seconds: 10`, `baseline_seconds: 180`, `min_messages: 15`, `min_participants: 5`, `rate_multiple: 3`, `mad_multiple: 3` und `per_user_limit: 4`.
 
 ## Herkunft
 
